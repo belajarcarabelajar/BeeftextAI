@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import { useTranslation, Language } from "./i18n";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1056,6 +1058,14 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
           </div>
         </div>
         <div className="settings-section">
+          <h3>🚀 Application Updates</h3>
+          <div className="settings-row">
+            <label>Check for new version</label>
+            <UpdateChecker showToast={showToast} />
+          </div>
+        </div>
+
+        <div className="settings-section">
           <h3>ℹ️ About</h3>
           <div className="settings-row"><label>Version</label><span style={{ color: "var(--text-secondary)" }}>BeefText AI v0.1.0</span></div>
           <div className="settings-row"><label>License</label><span style={{ color: "var(--text-secondary)" }}>MIT License</span></div>
@@ -1063,6 +1073,40 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
         </div>
       </div>
     </>
+  );
+}
+
+// ─── Update Checker ───────────────────────────────────────────────────────────
+
+function UpdateChecker({ showToast }: { showToast: (m: string, t?: "success" | "error") => void }) {
+  const [checking, setChecking] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
+  const handleCheck = async () => {
+    setChecking(true);
+    try {
+      const update = await check();
+      if (update) {
+        setUpdateAvailable(true);
+        showToast("📦 An update is available!", "success");
+        if (confirm(`New version ${update.version} is available. Install and restart?`)) {
+          await update.downloadAndInstall();
+          await relaunch();
+        }
+      } else {
+        showToast("✅ Application is up to date");
+      }
+    } catch (e) {
+      showToast(String(e), "error");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <button className={`btn ${updateAvailable ? "btn-primary" : "btn-secondary"}`} onClick={handleCheck} disabled={checking}>
+      {checking ? <span className="spinner" /> : (updateAvailable ? "⬇️ Update Now" : "🔄 Check for Updates")}
+    </button>
   );
 }
 
