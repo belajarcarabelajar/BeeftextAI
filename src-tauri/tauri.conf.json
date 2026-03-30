@@ -38,7 +38,7 @@
 
   "plugins": {
     "updater": {
-      "pubkey": "REPLACE_WITH_YOUR_PUBLIC_KEY",
+      "pubkey": "RWR1hgIQp+Pkkz0DfljOUvhQB39/31mtzx/K5LiguGxTt3YzF6Wp/pTI",
       "endpoints": [
         "https://github.com/TediRahmat/BeeftextAI/releases/latest/download/latest.json"
       ]
