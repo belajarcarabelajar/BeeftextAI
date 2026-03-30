@@ -4,7 +4,6 @@ BeefText AI is a modern, cross-platform text expansion utility built as a concep
 
 Built from scratch using **Tauri 2.x**, **Rust**, and **React**, BeefText AI is designed for blistering performance, low footprint, and high modularity. 
 
-![BeefText AI interface preview](https://github.com/belajarcarabelajar/BeeftextAI) 
 *(A high-performance dark-theme UI with instant expansion feedback)*
 
 ---
