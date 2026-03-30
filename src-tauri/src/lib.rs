@@ -345,13 +345,14 @@ pub fn run() {
     kb.start_listening(move |buffer| {
         let ollama = get_ollama();
         let buf = buffer.clone();
+        let kb_ref = Arc::clone(&KEYBOARD);
         std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .unwrap();
             rt.block_on(async {
-                engine::check_and_substitute(&buf, &ollama).await;
+                engine::check_and_substitute(&buf, &ollama, &kb_ref).await;
             });
         });
     });

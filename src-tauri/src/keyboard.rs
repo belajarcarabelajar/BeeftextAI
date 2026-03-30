@@ -75,36 +75,30 @@ impl KeyboardState {
                             Key::Return | Key::Tab | Key::Escape => {
                                 buf.clear();
                             }
-                            // Space or Punctuation — check buffer then add char
+                            // Space or Punctuation treated as normal keys now — no special delay/trailing behavior
                             Key::Space | Key::Dot | Key::Comma | Key::SemiColon | Key::Slash | Key::BackSlash => {
-                                let current = buf.clone();
                                 if let Some(ch) = key_to_char(key, is_shift) {
                                     buf.push(ch);
-                                }
-                                
-                                // Keep buffer manageable
-                                if buf.len() > 200 {
-                                    let excess = buf.len() - 200;
-                                    buf.drain(..excess);
-                                }
-                                
-                                // Trigger check
-                                // We pass the buffer WITHOUT the trailing trigger char if we want exact matches,
-                                // but the engine uses `matches_input` which might handle it.
-                                // Let's pass the buffer as it was BEFORE this char for backward compatibility,
-                                // OR better: the engine should check the buffer.
-                                drop(buf);
-                                on_trigger(current);
-                            }
-                            _ => {
-                                // Try to convert key to character
-                                if let Some(ch) = key_to_char(key, is_shift) {
-                                    buf.push(ch);
-                                    // Keep buffer manageable
                                     if buf.len() > 200 {
                                         let excess = buf.len() - 200;
                                         buf.drain(..excess);
                                     }
+                                    let current = buf.clone();
+                                    drop(buf);
+                                    on_trigger(current);
+                                }
+                            }
+                            // Every normal key press — append to buffer and check for trigger immediately
+                            _ => {
+                                if let Some(ch) = key_to_char(key, is_shift) {
+                                    buf.push(ch);
+                                    if buf.len() > 200 {
+                                        let excess = buf.len() - 200;
+                                        buf.drain(..excess);
+                                    }
+                                    let current = buf.clone();
+                                    drop(buf);
+                                    on_trigger(current);
                                 }
                             }
                         }

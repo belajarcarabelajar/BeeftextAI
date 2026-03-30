@@ -4,8 +4,8 @@ use std::time::Duration;
 
 /// Simulate backspace key presses to erase the trigger keyword
 pub fn erase_trigger(keyword_len: usize) {
-    // Erase keyword + trailing space
-    let total = keyword_len + 1;
+    // Erase exactly the keyword length
+    let total = keyword_len;
     for _ in 0..total {
         simulate_key_press(rdev::Key::Backspace);
         thread::sleep(Duration::from_millis(10));
