@@ -367,10 +367,12 @@ pub fn run() {
             use tauri::Manager;
 
             // Build tray menu
-            let show_hide = MenuItemBuilder::with_id("show_hide", "Show / Hide Window").build(app)?;
-            let toggle_expander = MenuItemBuilder::with_id("toggle_expander", "⌨️ Toggle Expander").build(app)?;
+            let show_hide = MenuItemBuilder::with_id("show_hide", "👁️ Show / Hide Window").build(app)?;
+            let toggle_expander = tauri::menu::CheckMenuItemBuilder::with_id("toggle_expander", "⌨️ Text Expander Active")
+                .checked(true)
+                .build(app)?;
             let separator = tauri::menu::PredefinedMenuItem::separator(app)?;
-            let quit = MenuItemBuilder::with_id("quit", "Quit BeefText AI").build(app)?;
+            let quit = MenuItemBuilder::with_id("quit", "🚪 Quit BeefText AI").build(app)?;
 
             let menu = MenuBuilder::new(app)
                 .items(&[&show_hide, &toggle_expander, &separator, &quit])
@@ -394,7 +396,17 @@ pub fn run() {
                         }
                         "toggle_expander" => {
                             let current = KEYBOARD.is_enabled();
-                            KEYBOARD.set_enabled(!current);
+                            let new_state = !current;
+                            KEYBOARD.set_enabled(new_state);
+                            
+                            // Visual feedback in the Tray Menu
+                            if let Ok(item) = app.menu().unwrap().get("toggle_expander") {
+                                if let Some(check_item) = item.as_check_menuitem() {
+                                    let _ = check_item.set_checked(new_state);
+                                    let new_text = if new_state { "⌨️ Text Expander Active" } else { "⏸ Text Expander Paused" };
+                                    let _ = check_item.set_text(new_text);
+                                }
+                            }
                         }
                         "quit" => {
                             std::process::exit(0);
