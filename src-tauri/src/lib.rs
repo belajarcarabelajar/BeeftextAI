@@ -230,6 +230,7 @@ async fn start_keyboard_hook() -> Result<String, String> {
         // This runs on the keyboard thread — spawn async work on tokio
         let ollama = get_ollama();
         let buf = buffer.clone();
+        let kb_ref = Arc::clone(&KEYBOARD);
         // Use a blocking approach since we're in a sync callback
         std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
@@ -237,7 +238,7 @@ async fn start_keyboard_hook() -> Result<String, String> {
                 .build()
                 .unwrap();
             rt.block_on(async {
-                engine::check_and_substitute(&buf, &ollama).await;
+                engine::check_and_substitute(&buf, &ollama, &kb_ref).await;
             });
         });
     });
@@ -401,9 +402,8 @@ pub fn run() {
                             KEYBOARD.set_enabled(new_state);
                             
                             // Visual feedback in the Tray Menu
-                            if let Ok(item) = app.menu().unwrap().get("toggle_expander") {
+                            if let Some(item) = app.menu().unwrap().get("toggle_expander") {
                                 if let Some(check_item) = item.as_check_menuitem() {
-                                    let _ = check_item.set_checked(new_state);
                                     let new_text = if new_state { "⌨️ Text Expander Active" } else { "⏸ Text Expander Paused" };
                                     let _ = check_item.set_text(new_text);
                                 }

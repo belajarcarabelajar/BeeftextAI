@@ -71,8 +71,12 @@ async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
                     title.replace("'", "''"),
                     body.replace("'", "''")
                 );
+                use std::os::windows::process::CommandExt;
+                
+                // 0x08000000 is CREATE_NO_WINDOW, which prevents the brief console flash
                 let _ = Command::new("powershell")
                     .args(["-WindowStyle", "Hidden", "-Command", &ps_script])
+                    .creation_flags(0x08000000)
                     .spawn();
             }
         });

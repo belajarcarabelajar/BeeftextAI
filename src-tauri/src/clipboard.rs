@@ -67,6 +67,10 @@ pub fn inject_text(text: &str) {
 
 /// Simulate a single key press and release
 fn simulate_key_press(key: rdev::Key) {
+    let _ = rdev::simulate(&rdev::EventType::KeyPress(key));
+    thread::sleep(Duration::from_millis(5));
+    let _ = rdev::simulate(&rdev::EventType::KeyRelease(key));
+}
 
 /// Simulate a key combo (modifier + key)
 fn simulate_key_combo(modifier: rdev::Key, key: rdev::Key) {
