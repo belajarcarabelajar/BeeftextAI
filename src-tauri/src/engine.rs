@@ -8,29 +8,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 /// Global toggle for substitution notifications
 pub static NOTIFICATIONS_ENABLED: AtomicBool = AtomicBool::new(true);
 
-/// Check if the typed buffer matches any snippet keyword and trigger substitution
-pub async fn check_and_substitute(typed_buffer: &str, ollama: &OllamaClient, kb: &crate::keyboard::KeyboardState) -> bool {
-    let snippets = match store::get_all_snippets() {
-        Ok(s) => s,
-        Err(_) => return false,
-    };
-
-    for snippet in &snippets {
-        if !snippet.enabled {
-            continue;
-        }
-
-        if snippet.matches_input(typed_buffer) {
-            // Found a match — perform substitution
-            kb.clear_buffer();
-            perform_substitution(snippet, ollama).await;
-            return true;
-        }
-    }
-
-    false
-}
-
 /// Perform the text substitution
 pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
     // 1. Evaluate all variables in the snippet text

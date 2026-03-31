@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use crate::snippet::{Snippet, MatchingMode, CaseSensitivity};
 use crate::group::Group;
 use crate::store;
-use uuid::Uuid;
 use chrono::Utc;
 
 /// Beeftext JSON format structures (v10)
@@ -17,8 +16,6 @@ struct BeeftextFile {
 #[derive(Deserialize, Debug)]
 struct BeeftextCombo {
     #[serde(default)]
-    uuid: Option<String>,
-    #[serde(default)]
     name: String,
     #[serde(default)]
     keyword: String,
@@ -28,6 +25,7 @@ struct BeeftextCombo {
     description: String,
     #[serde(default)]
     group: Option<String>,
+    #[allow(dead_code)]
     #[serde(default)]
     enabled: Option<bool>,
     #[serde(default, alias = "matchingMode")]
@@ -44,8 +42,6 @@ struct BeeftextGroup {
     name: String,
     #[serde(default)]
     description: String,
-    #[serde(default)]
-    enabled: Option<bool>,
 }
 
 #[derive(Serialize)]

@@ -22,6 +22,7 @@ struct GenerateRequest {
 #[derive(Deserialize, Debug)]
 pub struct GenerateResponse {
     pub response: String,
+    #[allow(dead_code)]
     pub done: bool,
 }
 
@@ -63,6 +64,7 @@ struct ChatRequest {
 #[derive(Deserialize, Debug)]
 pub struct ChatResponse {
     pub message: ChatMessage,
+    #[allow(dead_code)]
     pub done: bool,
 }
 

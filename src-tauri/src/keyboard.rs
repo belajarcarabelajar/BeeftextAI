@@ -21,11 +21,6 @@ impl KeyboardState {
         }
     }
 
-    /// Get the current buffer content
-    pub fn get_buffer(&self) -> String {
-        self.buffer.lock().clone()
-    }
-
     /// Clear the buffer
     pub fn clear_buffer(&self) {
         self.buffer.lock().clear();

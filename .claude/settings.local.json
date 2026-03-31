@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /c/Users/Tedi Rahmat/BeeftextAI/src-tauri)",
+      "Bash(cargo build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(magick --version)",
+      "Bash(convert --version)",
+      "Bash(python -c \"from PIL import Image; print\\(''PIL available''\\)\")",
+      "Bash(python3 -c \"from PIL import Image; print\\(''PIL available''\\)\")",
+      "Bash(npm list:*)",
+      "Bash(npx tauri:*)",
+      "Bash(python -c \":*)",
+      "Bash(python3 -c \":*)",
+      "Bash(node -e \"const img = require\\(''sharp''\\); img\\(''src-tauri/icons/Logo Beeftext AI.png''\\).metadata\\(\\).then\\(m => console.log\\(JSON.stringify\\(m\\)\\)\\)\")",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(git push:*)",
+      "Bash(npm run:*)",
+      "Bash(gh release:*)",
+      "Bash(env)",
+      "Bash(echo $TAURI_SIGNING_PRIVATE_KEY)",
+      "Bash(echo $SIGNING_PRIVATE_KEY)",
+      "Bash(cargo install:*)",
+      "Bash(gh secret:*)",
+      "Bash(cat .github/workflows/*.yml)",
+      "Read(//c/Users/Tedi Rahmat/.cargo/bin/**)",
+      "Read(//c/Users/Tedi Rahmat/.dotnet/**)"
+    ]
+  }
+}
