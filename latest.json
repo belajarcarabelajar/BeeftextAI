@@ -1,11 +1,11 @@
 {
-  "version": "0.1.5",
-  "notes": "🚀 Beeftext AI v0.1.5\n\nChanges:\n- Replace all app icons with Beeftext AI logo (Windows, macOS, iOS, Android)\n- Fix trigger worker compile errors",
-  "pub_date": "2026-03-31T12:50:00Z",
+  "version": "0.1.6",
+  "notes": "🚀 Beeftext AI v0.1.6\n\nChanges:\n- Fix CLAUDE.md Markdown linting errors\n- Add createUpdaterArtifacts support\n- Refresh signing keypair",
+  "pub_date": "2026-03-31T10:46:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.1.5/BeefText.AI_0.1.4_x64-setup.exe.zip"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL2lqdE5yTWtoRlhKNnN4eTFjRFpScXM0bEpkR01TVGJsRVJ5YlZvTHJIM1BBMXZwV2J0VnBYMU9CSzZxcnNUU0piT1dESHBmak40Q255enQ0TTVtL1FNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTUzOTc5CWZpbGU6QmVlZlRleHQgQUlfMC4xLjZfeDY0LXNldHVwLmV4ZS56aXAKeEJtVGpMeHZjTWxveFpqMU1zQ3VDUjdOeUthbERhazVGcmVqNlZQaHh0cFJNdlZUN3RzR1FNS0dMNU5EdmQXczU2NzaElQWTV5RmFEdz09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.1.6/BeefText%20AI_0.1.6_x64-setup.exe.zip"
     }
   }
 }
