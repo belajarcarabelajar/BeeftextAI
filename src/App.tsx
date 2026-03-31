@@ -135,7 +135,7 @@ export default function App() {
       <main className="main-content">
         {page === "snippets" && <SnippetsPage showToast={showToast} />}
         {page === "chat" && <ChatPage showToast={showToast} ollamaOnline={ollamaOnline} />}
-        {page === "search" && <SearchPage showToast={showToast} ollamaOnline={ollamaOnline} />}
+        {page === "search" && <SearchPage showToast={showToast} ollamaOnline={ollamaOnline} onEditSnippet={(s) => { setEditing(s); setShowForm(true); setPage("snippets"); }} />}
         {page === "settings" && <SettingsPage showToast={showToast} ollamaOnline={ollamaOnline} onLanguageChange={setLang} />}
       </main>
 
@@ -839,7 +839,7 @@ function extractSnippetJson(text: string): any {
 // Search Page (OmniSearch)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function SearchPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "success" | "error") => void; ollamaOnline: boolean }) {
+function SearchPage({ showToast, ollamaOnline, onEditSnippet }: { showToast: (m: string, t?: "success" | "error") => void; ollamaOnline: boolean; onEditSnippet: (snippet: Snippet) => void }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<(Snippet & { score?: number })[]>([]);
   const [searching, setSearching] = useState(false);
@@ -889,7 +889,7 @@ function SearchPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "s
         {results.length > 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {results.map((s, i) => (
-              <div key={s.uuid} className="card" style={{ padding: 16, display: "flex", alignItems: "center", gap: 16 }}>
+              <div key={s.uuid} className="card" style={{ padding: 16, display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }} onClick={() => onEditSnippet(s)}>
                 <div style={{ fontSize: 20, opacity: 0.5, width: 28, textAlign: "center" }}>{i + 1}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
