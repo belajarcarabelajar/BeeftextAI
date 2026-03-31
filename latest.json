@@ -1,11 +1,11 @@
 {
-  "version": "0.2.3",
-  "notes": "## Feature\n- **Click OmniSearch results to edit**: Clicking a search result now opens the snippet editor directly",
-  "pub_date": "2026-03-31T23:35:00Z",
+  "version": "0.2.4",
+  "notes": "## Improvements\n- **Token-aware context management**: Chat now respects model context limits with proper budget allocation\n- **Reduced system prompt**: Compacted to essential instructions only\n\n## Bug Fixes\n- Fixed context overflow risk on long conversations by implementing token budgets",
+  "pub_date": "2026-03-31T23:55:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3BtU1QzODdVMEhQdEZqU2dSenltVEgvU3J0SlBpeHA4TXpUYThCTDNwL2dFS1R2b05ZQllEblRTVGw0ZGRUNlVRbks4Nk9jc2U4YmJYT3lnVnczL1FVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTczMzI1CWZpbGU6QmVlZlRleHQgQUlfMC4yLjNfeDY0LXNldHVwLmV4ZQp3b2ZqT2JUeTFRTHQ2cVphVEVMK1A2M1diclB4QUhuSVJzMlFBSGI3emU1TTB5eXdMK3JJRFBTWTBXcWZPTXUzWFBkRkVQSXhuM3NJQzMrUk94QlBEQT09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.3/BeefText.AI_0.2.3_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3NaNWIwempDcGxzYTRzZ0RtM2hOcGRZUG1XK21hZ01rb1ZDVDJ6Wm5TZStVTjMxMGRqcXV5Q25DSlZSRHBTVmcvT29nVUdlcGFTcFlkdTVhbjVhZFFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTc0MTg5CWZpbGU6QmVlZlRleHQgQUlfMC4yLjRfeDY0LXNldHVwLmV4ZQo3NG9ZeSs4VXZSU3BOVEpmV0dsVm1LbnBmbE1xcDh1MUo4NGxoNHJpM3FGMVB0M1VEbDBSWjc1RklMc2N3T3JuQ2VvTEk3QVNsS2F2ZUkra2lzbGhBdz09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.4/BeefText.AI_0.2.4_x64-setup.exe"
     }
   }
 }
