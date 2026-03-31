@@ -9,6 +9,7 @@ mod clipboard;
 mod variable;
 mod backup;
 mod trigger;
+mod token;
 
 use ollama::{OllamaClient, ChatMessage};
 use snippet::Snippet;
@@ -28,28 +29,22 @@ fn get_ollama() -> OllamaClient {
 }
 
 const SYSTEM_PROMPT: &str = r#"You are an AI assistant for BeefText AI, a smart text expander.
-Your goal is to help users manage their shortcuts (snippets) and answer questions about them.
 
-### Capabilities:
-1. **Create/Update Snippets**: When a user wants to save or create a shortcut, respond with a JSON object followed by a brief explanation.
-   Format: {"keyword": "!abc", "snippet": "expanded text", "name": "Name", "description": "Description", "group": "Group"}
-   You MUST auto-generate a suitable `name`, `description`, and assign it to a logical `group`.
-   If one of the "User's existing groups" matches the context perfectly, use that exact group name. If no existing group fits, generate a concise new group name.
-2. **Query Snippets**: You can see the user's existing snippets below. If they ask "What is the shortcut for X?" or "List my email shortcuts", answer based on the provided context.
-3. **General Assistance**: Answer questions about how to use BeefText AI, its variables, or general productivity tips.
+### Snippet Creation
+When the user wants to create/save a snippet, respond with:
+{"keyword": "!abc", "snippet": "text", "name": "Name", "description": "Desc", "group": "GroupName"}
+Always auto-generate a name, description, and assign a logical group.
 
-### Guidelines:
-- Suggest short, memorable, and highly unique keywords. The keyword MUST start with EXACTLY ONE special symbol followed by exactly 3 letters (e.g., `@eml`, `#sig`, `!add`, `%tyx`, `&brd`). DO NOT use the `//` prefix.
-- Auto-generate meaningful and descriptive `name` and `description` for every snippet to provide useful context.
-- Use the provided context of "User's existing snippets" to avoid duplicates and answer questions accurately.
-- Be concise and helpful. Respond in the same language the user uses.
+### Keyword Rules
+- Must start with ONE special symbol + exactly 3 letters (e.g., @eml, #sig, !add, %tyx, &brd)
+- NO // prefix
+- Be unique and memorable
 
-### Template Variables:
-- #{clipboard} — Current clipboard
-- #{date}, #{time}, #{dateTime:format} — Date/Time
-- #{input:description} — User input on trigger
-- #{combo:keyword} — Recursive snippet
-- #{ai:prompt} — Dynamic AI generation on trigger"#;
+### Snippet Context
+User's existing snippets are provided below. Use them to avoid duplicates and answer questions.
+
+### Template Variables
+#{clipboard} #{date} #{time} #{dateTime:format} #{input:desc} #{combo:keyword} #{ai:prompt}"#;
 
 
 // ─── Snippet Commands ─────────────────────────────────────────────────────────
@@ -149,33 +144,78 @@ async fn ollama_models() -> Result<Vec<ollama::OllamaModel>, String> {
 
 #[tauri::command]
 async fn chat_with_ai(message: String) -> Result<String, String> {
-    store::save_chat_message("user", &message)?;
-    
-    let history = store::get_chat_history(20)?;
+    use token::{estimate_tokens, truncate_to_tokens, log_stats};
+
+    // Truncate current message to 2000 tokens
+    let message_truncated = truncate_to_tokens(&message, 2000);
+    if message_truncated.len() < message.len() {
+        eprintln!("[TOKEN] message truncated | original: {} chars | truncated: {} chars", message.len(), message_truncated.len());
+    }
+
+    store::save_chat_message("user", &message_truncated)?;
+
+    let history = store::get_chat_history(50)?;
     let snippets = store::get_all_snippets().unwrap_or_default();
-    let snippet_context: String = snippets.iter().take(100).map(|s| {
-        format!("- Keyword: `{}` → \"{}\" ({})", s.keyword, s.snippet, s.name)
-    }).collect::<Vec<_>>().join("\n");
-    
     let groups = store::get_all_groups().unwrap_or_default();
-    let group_context: String = groups.iter().map(|g| {
-        format!("- {}", g.name)
-    }).collect::<Vec<_>>().join("\n");
-    
-    let system = format!(
-        "{}\n\nUser's existing groups:\n{}\n\nUser's existing snippets:\n{}", 
-        SYSTEM_PROMPT, 
+
+    // Build contexts with token budgets
+    let group_context: String = groups.iter()
+        .map(|g| format!("- {}", g.name))
+        .collect::<Vec<_>>().join("\n");
+
+    // Truncate snippets context: take top 50 snippets (by keyword/name match)
+    let snippet_lines: Vec<String> = snippets.iter().take(50).map(|s| {
+        format!("- Keyword: `{}` → \"{}\" ({})", s.keyword, s.snippet, s.name)
+    }).collect();
+    let snippet_context = snippet_lines.join("\n");
+
+    // Build and truncate system prompt to 512 tokens
+    let system_base = format!(
+        "{}\n\nUser's existing groups:\n{}\n\nUser's existing snippets:\n{}",
+        SYSTEM_PROMPT,
         if group_context.is_empty() { "None".to_string() } else { group_context },
         snippet_context
     );
-    
+    let system = truncate_to_tokens(&system_base, 512);
+
+    log_stats("system", &system);
+    log_stats("message", &message_truncated);
+
+    // Budget: reserve 1024 tokens for response, 512 for system
+    // nemotron-3-super:cloud uses 8K context = 8192 tokens max
+    let max_context: usize = 8192;
+    let system_tokens = estimate_tokens(&system);
+    let response_budget = 1024;
+    let history_budget = max_context.saturating_sub(system_tokens).saturating_sub(response_budget);
+
+    // Build message list with token-aware history trimming
     let mut messages = vec![ChatMessage { role: "system".to_string(), content: system }];
-    for (role, content) in &history {
+
+    // Add history from newest to oldest, staying within budget
+    let mut history_tokens_used = 0;
+    for (role, content) in history.iter().rev() {
+        let msg_tokens = estimate_tokens(content) + 10; // ~10 tokens overhead per message
+        if history_tokens_used + msg_tokens > history_budget {
+            break;
+        }
+        history_tokens_used += msg_tokens;
         messages.push(ChatMessage { role: role.clone(), content: content.clone() });
     }
-    messages.push(ChatMessage { role: "user".to_string(), content: message });
-    
-    let response = get_ollama().chat(messages).await?;
+
+    // Reverse to get chronological order (oldest first, newest last)
+    // messages currently has: [system, ...recent_history_reversed]
+    // We need to move system to front and keep history chronological
+    let sys_msg = messages.remove(0);
+    messages.reverse();
+    messages.insert(0, sys_msg);
+
+    messages.push(ChatMessage { role: "user".to_string(), content: message_truncated });
+
+    let total_tokens: usize = messages.iter().map(|m| estimate_tokens(&m.content) + 10).sum();
+    eprintln!("[TOKEN] total request | tokens: ~{} | messages: {}", total_tokens, messages.len());
+
+    // Set num_ctx to limit context window on Ollama side
+    let response = get_ollama().chat(messages, Some(max_context as i32)).await?;
     store::save_chat_message("assistant", &response.content)?;
     Ok(response.content)
 }
