@@ -1,11 +1,11 @@
 {
-  "version": "0.2.2",
-  "notes": "## Bug Fixes\n- **Embedding failure tracking**: Failures during re-embed are now reported with specific error details (Ollama API errors, empty responses, database save failures)\n- **Language/Bahasa realtime update**: Language setting now changes immediately without requiring Save button",
-  "pub_date": "2026-03-31T23:30:00Z",
+  "version": "0.2.3",
+  "notes": "## Feature\n- **Click OmniSearch results to edit**: Clicking a search result now opens the snippet editor directly",
+  "pub_date": "2026-03-31T23:35:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3B1ZGd4MUs0RnlRUkt1cG8zYndQbVFGVzlJQ1RpSlphWjlORVJiOG5Mb1VkcEkvN0Y3VXpSVExrVjVLZFlkcklBb3o4dklYbzNweU9PRmJqM1dIdHdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTcxODEzCWZpbGU6QmVlZlRleHQgQUlfMC4yLjJfeDY0LXNldHVwLmV4ZQpsbzNDRkNOWW8wa2J6VXNtYUFqSnpCSWhaZzAzZGNORTZxRWRETS92YktzZlM2d1IzNnhZUHNTSWhOdVlCWUxHNEU5V2VINnlBVmVQTkJQekhXcXpCQT09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.2/BeefText.AI_0.2.2_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3BtU1QzODdVMEhQdEZqU2dSenltVEgvU3J0SlBpeHA4TXpUYThCTDNwL2dFS1R2b05ZQllEblRTVGw0ZGRUNlVRbks4Nk9jc2U4YmJYT3lnVnczL1FVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTczMzI1CWZpbGU6QmVlZlRleHQgQUlfMC4yLjNfeDY0LXNldHVwLmV4ZQp3b2ZqT2JUeTFRTHQ2cVphVEVMK1A2M1diclB4QUhuSVJzMlFBSGI3emU1TTB5eXdMK3JJRFBTWTBXcWZPTXUzWFBkRkVQSXhuM3NJQzMrUk94QlBEQT09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.3/BeefText.AI_0.2.3_x64-setup.exe"
     }
   }
 }
