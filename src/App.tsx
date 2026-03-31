@@ -182,14 +182,6 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
     return s.keyword.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || s.snippet.toLowerCase().includes(q) || s.description.toLowerCase().includes(q);
   });
 
-  const handleDelete = async (uuid: string) => {
-    try {
-      await invoke("delete_snippet_cmd", { uuid });
-      showToast("Snippet deleted");
-      load();
-    } catch (e) { showToast(String(e), "error"); }
-  };
-
   const handleToggle = async (uuid: string, enabled: boolean) => {
     try {
       await invoke("toggle_snippet_enabled", { uuid, enabled: !enabled });
@@ -232,6 +224,15 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
     } catch (e) { showToast(String(e), "error"); }
   };
 
+  const handleDeleteAll = async () => {
+    if (!window.confirm("Are you sure you want to delete ALL snippets? This cannot be undone.")) return;
+    try {
+      const count = await invoke<number>("delete_all_snippets_cmd");
+      showToast(`Deleted ${count} snippet(s)`);
+      load();
+    } catch (e) { showToast(String(e), "error"); }
+  };
+
   const groupSnippetCount = (gid: string | null) => snippets.filter(s => s.group_id === gid).length;
 
   return (
@@ -249,6 +250,8 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
               { label: "📤 Export as JSON", onClick: handleExportJson },
               { label: "📤 Export as CSV", onClick: handleExportCsv },
               { label: "📄 Cheat Sheet", onClick: handleCheatSheet },
+              { type: "separator" },
+              { label: "🗑 Delete All Snippets", onClick: handleDeleteAll },
             ]} />
           </div>
           <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true); }}>
@@ -339,11 +342,6 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
                       {s.matching_mode === "Loose" ? "Loose" : "Strict"}
                       {s.case_sensitivity === "CaseInsensitive" ? " · CI" : ""}
                     </td>
-                    <td>
-                      <button className="btn btn-danger btn-sm btn-icon" onClick={(e) => { e.stopPropagation(); handleDelete(s.uuid); }} title="Delete">
-                        🗑
-                      </button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -375,7 +373,9 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
 
 // ─── Dropdown Menu ────────────────────────────────────────────────────────────
 
-function DropdownMenu({ items }: { items: { label: string; onClick: () => void }[] }) {
+type DropdownItem = { label?: string; onClick?: () => void; type?: "separator" };
+
+function DropdownMenu({ items }: { items: DropdownItem[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -393,9 +393,13 @@ function DropdownMenu({ items }: { items: { label: string; onClick: () => void }
       {open && (
         <div className="dropdown-menu">
           {items.map((item, i) => (
-            <button key={i} className="dropdown-item" onClick={() => { item.onClick(); setOpen(false); }}>
-              {item.label}
-            </button>
+            item.type === "separator" ? (
+              <div key={i} className="dropdown-separator" />
+            ) : (
+              <button key={i} className="dropdown-item" onClick={() => { item.onClick?.(); setOpen(false); }}>
+                {item.label}
+              </button>
+            )
           ))}
         </div>
       )}
@@ -510,6 +514,18 @@ function SnippetModal({ snippet, groups, onClose, onSave, showToast }: {
           </div>
         </div>
         <div className="modal-footer">
+          {snippet && (
+            <button className="btn btn-danger" onClick={async () => {
+              if (!window.confirm("Are you sure you want to delete this snippet?")) return;
+              try {
+                await invoke("delete_snippet_cmd", { uuid: snippet.uuid });
+                onSave();
+              } catch (e) { showToast(String(e), "error"); }
+            }}>
+              🗑 Delete
+            </button>
+          )}
+          <div style={{ flex: 1 }} />
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? <span className="spinner" /> : null}
