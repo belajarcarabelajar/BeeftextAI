@@ -1,10 +1,10 @@
 {
   "version": "0.2.2",
-  "notes": "## Bug Fixes\n- **Fixed delete_group_cmd argument mismatch**: The `deleteSnippets` parameter was not properly mapped from frontend to backend, causing `invalid args` errors when trying to delete groups.",
-  "pub_date": "2026-03-31T22:15:00Z",
+  "notes": "## Bug Fixes\n- **Embedding failure tracking**: Failures during re-embed are now reported with specific error details (Ollama API errors, empty responses, database save failures)\n- **Language/Bahasa realtime update**: Language setting now changes immediately without requiring Save button",
+  "pub_date": "2026-03-31T23:30:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL24yWUV0NytNZVl2RXFKNnRPejNaYXFIREFvZS9vZTg5NTJpSzI2dGtSeXk5ZVBzQjdUampoVURMRkRLMjk0QWhaL215VGNld0s3M0lIQ1d0dkVIRlEwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTY5ODg4CWZpbGU6QmVlZlRleHQgQUlfMC4yLjJfeDY0LXNldHVwLmV4ZQpxTnNPYTdhLzBIamYxUEl3bk5sUkh0S0hKZVVEaSs5SzBZYWJTSjI3SnVrRXdaZE1xZUZIZUhUOEVyWktkaWhEVzJ3VnhoKzdhVUxNbXM0UXhDUUJBdz09Cg==",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3B1ZGd4MUs0RnlRUkt1cG8zYndQbVFGVzlJQ1RpSlphWjlORVJiOG5Mb1VkcEkvN0Y3VXpSVExrVjVLZFlkcklBb3o4dklYbzNweU9PRmJqM1dIdHdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTcxODEzCWZpbGU6QmVlZlRleHQgQUlfMC4yLjJfeDY0LXNldHVwLmV4ZQpsbzNDRkNOWW8wa2J6VXNtYUFqSnpCSWhaZzAzZGNORTZxRWRETS92YktzZlM2d1IzNnhZUHNTSWhOdVlCWUxHNEU5V2VINnlBVmVQTkJQekhXcXpCQT09Cg==",
       "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.2/BeefText.AI_0.2.2_x64-setup.exe"
     }
   }
