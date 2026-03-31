@@ -126,8 +126,13 @@ async fn update_group_cmd(g: Group) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn delete_group_cmd(uuid: String) -> Result<(), String> {
-    store::delete_group(&uuid)
+async fn delete_group_cmd(uuid: String, delete_snippets: bool) -> Result<(), String> {
+    store::delete_group(&uuid, delete_snippets)
+}
+
+#[tauri::command]
+async fn delete_snippets_in_group_cmd(group_uuid: String) -> Result<usize, String> {
+    store::delete_snippets_in_group(&group_uuid)
 }
 
 // ─── Ollama Commands ──────────────────────────────────────────────────────────
@@ -492,6 +497,7 @@ pub fn run() {
             add_group_cmd,
             update_group_cmd,
             delete_group_cmd,
+            delete_snippets_in_group_cmd,
             ollama_status,
             ollama_models,
             chat_with_ai,

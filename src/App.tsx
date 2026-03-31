@@ -190,10 +190,25 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
   };
 
   const handleDeleteGroup = async (uuid: string) => {
+    const groupSnippetCount = snippets.filter(s => s.group_id === uuid).length;
+    const mode = window.confirm(
+      `Delete group "${groups.find(g => g.uuid === uuid)?.name}"?\n\n` +
+      `Press OK: Delete group and all its snippets (${groupSnippetCount} snippet${groupSnippetCount !== 1 ? "s" : ""} will be deleted).\n` +
+      `Press Cancel: Delete group only, keeping all snippets.`
+    );
     try {
-      await invoke("delete_group_cmd", { uuid });
+      await invoke("delete_group_cmd", { uuid, delete_snippets: mode });
       setSelectedGroup(null);
-      showToast("Group deleted");
+      showToast(mode ? "Group and snippets deleted" : "Group deleted, snippets kept");
+      load();
+    } catch (e) { showToast(String(e), "error"); }
+  };
+
+  const handleDeleteGroupSnippets = async (uuid: string) => {
+    if (!window.confirm("Delete all snippets in this group?")) return;
+    try {
+      const count = await invoke<number>("delete_snippets_in_group_cmd", { groupUuid: uuid });
+      showToast(`Deleted ${count} snippet(s)`);
       load();
     } catch (e) { showToast(String(e), "error"); }
   };
@@ -284,7 +299,8 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
                 <span className="group-count">{groupSnippetCount(g.uuid)}</span>
                 <div className="group-actions">
                   <button className="group-action-btn" onClick={(e) => { e.stopPropagation(); setEditingGroup(g); setShowGroupForm(true); }} title="Edit">✏️</button>
-                  <button className="group-action-btn" onClick={(e) => { e.stopPropagation(); handleDeleteGroup(g.uuid); }} title="Delete">🗑</button>
+                  <button className="group-action-btn" onClick={(e) => { e.stopPropagation(); handleDeleteGroupSnippets(g.uuid); }} title="Delete All Snippets">🗑️</button>
+                  <button className="group-action-btn" onClick={(e) => { e.stopPropagation(); handleDeleteGroup(g.uuid); }} title="Delete">✕</button>
                 </div>
               </div>
             ))}
