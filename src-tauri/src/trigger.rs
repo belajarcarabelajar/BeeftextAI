@@ -192,7 +192,7 @@ pub fn invalidate_cache() {
 async fn check_and_substitute_internal(
     typed_buffer: &str,
     ollama: &OllamaClient,
-    kb: &crate::keyboard::KeyboardState,
+    kb: &Arc<crate::keyboard::KeyboardState>,
 ) -> bool {
     let snippets = WORKER_STATE.get_cached_snippets();
 
@@ -203,10 +203,12 @@ async fn check_and_substitute_internal(
 
         if snippet.matches_input(typed_buffer) {
             kb.clear_buffer();
+            kb.set_active(false); // Prevent simulated keystrokes from being captured
 
             // Perform substitution on a separate thread (clipboard ops are blocking)
             let snippet_clone = snippet.clone();
             let ollama_clone = ollama.clone();
+            let kb_clone = Arc::clone(kb);
             thread::spawn(move || {
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()
@@ -215,6 +217,7 @@ async fn check_and_substitute_internal(
                 rt.block_on(async {
                     perform_substitution(&snippet_clone, &ollama_clone).await;
                 });
+                kb_clone.set_active(true); // Re-enable keyboard hook
             });
 
             return true;

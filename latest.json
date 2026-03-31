@@ -1,10 +1,10 @@
 {
   "version": "0.2.0",
-  "notes": "🚀 Beeftext AI v0.2.0\n\nFeatures:\n- Version bump to 0.2.0\n- Clean build with correct updater signatures\n- Updated release process as per CLAUDE.md",
-  "pub_date": "2026-03-31T12:07:00Z",
+  "notes": "🚀 BeefText AI v0.2.0 — Snippet Trigger Fix\n\n## Bug Fixes\n- **Fixed snippet trigger detection**: Snippets now trigger correctly when typing a keyword directly, without needing to press another key first\n- **Keyboard feedback loop prevention**: Simulated keystrokes (backspace, paste) are no longer captured by the keyboard hook, preventing buffer corruption\n- **Navigation key combo breakers**: Arrow keys, Home/End, Insert/Delete now properly reset the trigger buffer\n\n## Technical Improvements\n- Added active/inactive state to keyboard hook to prevent feedback during text substitution\n- Improved reliability of text expansion in all applications",
+  "pub_date": "2026-03-31T20:15:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3F4enBTWEN0NU1aV0NXNjE4Tzg3K2xlN1BtVERQdFBhMXE2ZEpPMnBHaDRjSHAxdjVNU0psSUZRR00xOWh4L3g5VUJvQ1dpTmhsNWg5MTc0Mm54NHdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTU4NzQ0CWZpbGU6QmVlZlRleHQgQUlfMC4yLjBfeDY0LXNldHVwLmV4ZQpOYk5XVmIxeTV6cEV5UVhQRFc5NURlbHdvM1A0d0RkNEhLZ1Nod01VSkVoM2pRejVsb2tEQ2xNUnA2ZVFFQmxSRFJNbUxHRE1VM3pKaldFR1dYSUlDQT09Cg==",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL2srMkJ3cTFoNHBjWE1yb1gxVWF0MGl4TUFYS0YvaHN0dDNmMVp3TnA3ZjZCb3h5cmk0WFdCbUtQSHNrdUpxRCtsMkRJVDhnRG45azRaZWhGTk1kMFE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTYzOTM2CWZpbGU6QmVlZlRleHQgQUlfMC4yLjBfeDY0LXNldHVwLmV4ZQoyRnpIK2ZId0hBejhLaTgxQ2doYXFnMkpyMnpyN2xqVm1sSE5QaC9NSmU3RkRNaTdZcldUS0ljcjRNb1JiQXlLVllvc1gyOGZERmUzbUdzaHUyNUtDZz09Cg==",
       "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.0/BeefText.AI_0.2.0_x64-setup.exe"
     }
   }

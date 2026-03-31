@@ -9,6 +9,8 @@ pub struct KeyboardState {
     pub enabled: Arc<AtomicBool>,
     pub running: Arc<AtomicBool>,
     pub shift_pressed: Arc<AtomicBool>,
+    /// When false, skip processing events (used during text substitution to prevent feedback loop)
+    active: Arc<AtomicBool>,
 }
 
 impl KeyboardState {
@@ -18,6 +20,7 @@ impl KeyboardState {
             enabled: Arc::new(AtomicBool::new(true)),
             running: Arc::new(AtomicBool::new(false)),
             shift_pressed: Arc::new(AtomicBool::new(false)),
+            active: Arc::new(AtomicBool::new(true)),
         }
     }
 
@@ -39,12 +42,18 @@ impl KeyboardState {
         let enabled = Arc::clone(&self.enabled);
         let running = Arc::clone(&self.running);
         let shift_pressed = Arc::clone(&self.shift_pressed);
+        let active = Arc::clone(&self.active);
 
         running.store(true, Ordering::Relaxed);
 
         thread::spawn(move || {
             let callback = move |event: Event| {
                 if !enabled.load(Ordering::Relaxed) {
+                    return;
+                }
+
+                // Skip processing during text injection to prevent feedback loop
+                if !active.load(Ordering::Relaxed) {
                     return;
                 }
 
@@ -66,8 +75,11 @@ impl KeyboardState {
                             Key::Backspace => {
                                 buf.pop();
                             }
-                            // Enter, Tab, Escape — combo breakers (reset buffer)
-                            Key::Return | Key::Tab | Key::Escape => {
+                            // Enter, Tab, Escape, Navigation keys — combo breakers (reset buffer)
+                            Key::Return | Key::Tab | Key::Escape
+                            | Key::Home | Key::End
+                            | Key::UpArrow | Key::DownArrow | Key::LeftArrow | Key::RightArrow
+                            | Key::Insert | Key::Delete => {
                                 buf.clear();
                             }
                             // Space or Punctuation treated as normal keys now — no special delay/trailing behavior
@@ -123,6 +135,11 @@ impl KeyboardState {
 
     pub fn is_enabled(&self) -> bool {
         self.enabled.load(Ordering::Relaxed)
+    }
+
+    /// Temporarily disable event processing (used during text substitution)
+    pub fn set_active(&self, value: bool) {
+        self.active.store(value, Ordering::Relaxed);
     }
 }
 
