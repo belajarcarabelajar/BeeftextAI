@@ -126,6 +126,14 @@ impl OllamaClient {
             input: texts,
         };
         let resp = self.client.post(&url).json(&req).send().await.map_err(|e| e.to_string())?;
+
+        // Check if response is OK before trying to parse JSON
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(format!("Ollama API error (status {}): {}", status, body));
+        }
+
         let data: EmbedResponse = resp.json().await.map_err(|e| e.to_string())?;
         Ok(data.embeddings)
     }
