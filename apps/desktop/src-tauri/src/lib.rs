@@ -303,33 +303,72 @@ struct EmbedProgress {
     percentage: f64,
 }
 
+#[derive(serde::Serialize)]
+struct EmbedFailure {
+    uuid: String,
+    name: String,
+    reason: String,
+}
+
+#[derive(serde::Serialize)]
+struct ReEmbedResult {
+    successful: usize,
+    failed: usize,
+    failures: Vec<EmbedFailure>,
+}
+
 #[tauri::command]
-async fn force_re_embed_all(resume: bool, app: tauri::AppHandle) -> Result<usize, String> {
+async fn force_re_embed_all(resume: bool, app: tauri::AppHandle) -> Result<ReEmbedResult, String> {
     use tauri::Emitter;
     let mut snippets = store::get_all_snippets()?;
     let client = get_ollama();
     let mut count = 0;
-    
+    let mut failures = Vec::new();
+
     if resume {
         let embeddings = store::get_all_embeddings()?;
         let embedded_uuids: std::collections::HashSet<String> = embeddings.into_iter().map(|(id, _)| id).collect();
         snippets.retain(|s| !embedded_uuids.contains(&s.uuid));
     }
-    
+
     let total = snippets.len();
     if total == 0 {
-        return Ok(0);
+        return Ok(ReEmbedResult { successful: 0, failed: 0, failures: vec![] });
     }
-    
+
     for (i, s) in snippets.iter().enumerate() {
         let text = format!("{} {} {} {}", s.name, s.keyword, s.description, s.snippet);
-        if let Ok(embeddings) = client.embed(vec![text]).await {
-            if let Some(emb) = embeddings.first() {
-                let _ = store::save_embedding(&s.uuid, emb);
-                count += 1;
+        let result = client.embed(vec![text]).await;
+
+        match result {
+            Ok(embeddings) => {
+                if let Some(emb) = embeddings.first() {
+                    if store::save_embedding(&s.uuid, emb).is_ok() {
+                        count += 1;
+                    } else {
+                        failures.push(EmbedFailure {
+                            uuid: s.uuid.clone(),
+                            name: s.name.clone(),
+                            reason: "Failed to save embedding to database".to_string(),
+                        });
+                    }
+                } else {
+                    failures.push(EmbedFailure {
+                        uuid: s.uuid.clone(),
+                        name: s.name.clone(),
+                        reason: "Ollama returned empty embeddings array".to_string(),
+                    });
+                }
+            }
+            Err(e) => {
+                failures.push(EmbedFailure {
+                    uuid: s.uuid.clone(),
+                    name: s.name.clone(),
+                    reason: format!("Ollama API error: {}", e),
+                });
             }
         }
-        
+
         // Emit progress
         let _ = app.emit("embed_progress", EmbedProgress {
             current: i + 1,
@@ -337,7 +376,13 @@ async fn force_re_embed_all(resume: bool, app: tauri::AppHandle) -> Result<usize
             percentage: ((i + 1) as f64 / total as f64) * 100.0,
         });
     }
-    Ok(count)
+
+    let failed = failures.len();
+    for f in &failures {
+        eprintln!("Embedding failed for snippet '{}' ({}): {}", f.name, f.uuid, f.reason);
+    }
+
+    Ok(ReEmbedResult { successful: count, failed, failures })
 }
 
 #[tauri::command]
