@@ -754,7 +754,19 @@ function MessageContent({ content, showToast }: { content: string; showToast: (m
           }
         }
 
-        await invoke("add_snippet", { keyword: generatedKeyword, snippetText: snippetJson.snippet || "", name: snippetJson.name || "", description: snippetJson.description || "", groupId: null, aiGenerated: true });
+        let groupId: string | null = null;
+        if (snippetJson.group) {
+          const allGroups = await invoke<Group[]>("get_groups");
+          const existingGroup = allGroups.find(g => g.name.toLowerCase() === snippetJson.group.toLowerCase());
+          if (existingGroup) {
+            groupId = existingGroup.uuid;
+          } else {
+            const newGroup = await invoke<Group>("add_group_cmd", { name: snippetJson.group, description: "Auto-generated group" });
+            groupId = newGroup.uuid;
+          }
+        }
+
+        await invoke("add_snippet", { keyword: generatedKeyword, snippetText: snippetJson.snippet || "", name: snippetJson.name || "", description: snippetJson.description || "", groupId: groupId, aiGenerated: true });
         showToast("✅ Snippet saved!");
       } catch (e) { showToast(String(e), "error"); }
     };
