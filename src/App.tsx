@@ -57,6 +57,8 @@ export default function App() {
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [lang, setLang] = useState<Language>("both");
   const [appVersion, setAppVersion] = useState("...");
+  const [showForm, setShowForm] = useState(false);
+  const [editingSnippet, setEditingSnippet] = useState<Snippet | null>(null);
 
   useEffect(() => {
     const check = async () => {
@@ -133,9 +135,9 @@ export default function App() {
       </aside>
 
       <main className="main-content">
-        {page === "snippets" && <SnippetsPage showToast={showToast} />}
+        {page === "snippets" && <SnippetsPage showToast={showToast} showForm={showForm} setShowForm={setShowForm} editingSnippet={editingSnippet} setEditingSnippet={setEditingSnippet} />}
         {page === "chat" && <ChatPage showToast={showToast} ollamaOnline={ollamaOnline} />}
-        {page === "search" && <SearchPage showToast={showToast} ollamaOnline={ollamaOnline} onEditSnippet={(s) => { setEditing(s); setShowForm(true); setPage("snippets"); }} />}
+        {page === "search" && <SearchPage showToast={showToast} ollamaOnline={ollamaOnline} onEditSnippet={(s) => { setEditingSnippet(s); setShowForm(true); setPage("snippets"); }} />}
         {page === "settings" && <SettingsPage showToast={showToast} ollamaOnline={ollamaOnline} onLanguageChange={setLang} />}
       </main>
 
@@ -148,13 +150,17 @@ export default function App() {
 // Snippets Page — with Group sidebar
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "error") => void }) {
+function SnippetsPage({ showToast, showForm, setShowForm, editingSnippet, setEditingSnippet }: {
+  showToast: (m: string, t?: "success" | "error") => void;
+  showForm: boolean;
+  setShowForm: (v: boolean) => void;
+  editingSnippet: Snippet | null;
+  setEditingSnippet: (s: Snippet | null) => void;
+}) {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [filter, setFilter] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null); // null = "All", "ungrouped" = no group
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<Snippet | null>(null);
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [showImport, setShowImport] = useState(false);
@@ -269,7 +275,7 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
               { label: "🗑 Delete All Snippets", onClick: handleDeleteAll },
             ]} />
           </div>
-          <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true); }}>
+          <button className="btn btn-primary" onClick={() => { setEditingSnippet(null); setShowForm(true); }}>
             + New Snippet
           </button>
         </div>
@@ -315,7 +321,7 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
               <h3>{snippets.length === 0 ? "No snippets yet" : "No results"}</h3>
               <p>{snippets.length === 0 ? "Create your first text snippet or ask the AI chatbot to generate one for you!" : "Try a different search term or group"}</p>
               {snippets.length === 0 && (
-                <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true); }}>
+                <button className="btn btn-primary" onClick={() => { setEditingSnippet(null); setShowForm(true); }}>
                   + Create First Snippet
                 </button>
               )}
@@ -335,7 +341,7 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
               </thead>
               <tbody>
                 {filtered.map(s => (
-                  <tr key={s.uuid} className={`snippet-row ${!s.enabled ? "disabled" : ""}`} onClick={() => { setEditing(s); setShowForm(true); }}>
+                  <tr key={s.uuid} className={`snippet-row ${!s.enabled ? "disabled" : ""}`} onClick={() => { setEditingSnippet(s); setShowForm(true); }}>
                     <td>
                       <button
                         className={`toggle-btn ${s.enabled ? "on" : "off"}`}
@@ -367,8 +373,8 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
       </div>
 
       {showForm && (
-        <SnippetModal snippet={editing} groups={groups} onClose={() => setShowForm(false)}
-          onSave={() => { setShowForm(false); load(); showToast(editing ? "Snippet updated" : "Snippet created"); }}
+        <SnippetModal snippet={editingSnippet} groups={groups} onClose={() => setShowForm(false)}
+          onSave={() => { setShowForm(false); load(); showToast(editingSnippet ? "Snippet updated" : "Snippet created"); }}
           showToast={showToast} />
       )}
 
@@ -924,9 +930,9 @@ function SearchPage({ showToast, ollamaOnline, onEditSnippet }: { showToast: (m:
         {results.length > 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {results.map((s, i) => (
-              <div key={s.uuid} className="card" style={{ padding: 16, display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }} onClick={() => onEditSnippet(s)}>
-                <div style={{ fontSize: 20, opacity: 0.5, width: 28, textAlign: "center" }}>{i + 1}</div>
-                <div style={{ flex: 1 }}>
+              <div key={s.uuid} className="card" style={{ padding: 16, display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); onEditSnippet(s); }}>
+                <div style={{ fontSize: 20, opacity: 0.5, width: 28, textAlign: "center", pointerEvents: "none" }}>{i + 1}</div>
+                <div style={{ flex: 1, pointerEvents: "none" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                     <span className="keyword-badge">{s.keyword}</span>
                     <span style={{ fontWeight: 600 }}>{s.name || "Untitled"}</span>
@@ -935,11 +941,17 @@ function SearchPage({ showToast, ollamaOnline, onEditSnippet }: { showToast: (m:
                   <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{s.snippet.substring(0, 120)}{s.snippet.length > 120 ? "..." : ""}</div>
                 </div>
                 {s.score !== undefined && (
-                  <div style={{ textAlign: "right", minWidth: 60 }}>
+                  <div style={{ textAlign: "right", minWidth: 60, pointerEvents: "none" }}>
                     <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Relevance</div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: s.score > 0.7 ? "var(--accent-success)" : "var(--text-secondary)" }}>{Math.round(s.score * 100)}%</div>
                   </div>
                 )}
+                <button
+                  style={{ pointerEvents: "auto", padding: "6px 12px", background: "var(--accent-primary)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEditSnippet(s); }}
+                >
+                  ✏️ Edit
+                </button>
               </div>
             ))}
           </div>
