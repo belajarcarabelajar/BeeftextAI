@@ -744,6 +744,8 @@ function MessageContent({ content, showToast }: { content: string; showToast: (m
           <div className="snippet-card-chat-header">📋 Generated Snippet</div>
           {snippetJson.keyword && <div className="snippet-card-chat-field"><span className="snippet-card-chat-label">Keyword:</span><span className="keyword-badge">{snippetJson.keyword}</span></div>}
           {snippetJson.name && <div className="snippet-card-chat-field"><span className="snippet-card-chat-label">Name:</span><span className="snippet-card-chat-value">{snippetJson.name}</span></div>}
+          {snippetJson.description && <div className="snippet-card-chat-field"><span className="snippet-card-chat-label">Desc:</span><span className="snippet-card-chat-value" style={{ color: "var(--text-secondary)", fontSize: 12 }}>{snippetJson.description}</span></div>}
+          {snippetJson.group && <div className="snippet-card-chat-field"><span className="snippet-card-chat-label">Group:</span><span className="snippet-card-chat-value" style={{ color: "var(--text-secondary)", fontSize: 12 }}>{snippetJson.group}</span></div>}
           <div className="snippet-card-chat-field"><span className="snippet-card-chat-label">Snippet:</span><span className="snippet-card-chat-value" style={{ whiteSpace: "pre-wrap" }}>{snippetJson.snippet}</span></div>
           <div className="snippet-card-chat-actions"><button className="btn btn-primary btn-sm" onClick={handleSave}>✅ Save Snippet</button></div>
         </div>
