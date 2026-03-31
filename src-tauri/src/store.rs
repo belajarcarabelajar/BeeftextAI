@@ -177,16 +177,30 @@ pub fn update_group(g: &Group) -> Result<(), String> {
     Ok(())
 }
 
-/// Delete a group
-pub fn delete_group(uuid: &str) -> Result<(), String> {
+/// Delete a group and optionally all snippets inside it
+pub fn delete_group(uuid: &str, delete_snippets: bool) -> Result<(), String> {
     let guard = DB.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
-    // Move snippets to ungrouped
-    conn.execute("UPDATE snippets SET group_id = NULL WHERE group_id = ?1", params![uuid]).map_err(|e| e.to_string())?;
+    if delete_snippets {
+        conn.execute("DELETE FROM snippets WHERE group_id = ?1", params![uuid]).map_err(|e| e.to_string())?;
+    } else {
+        // Move snippets to ungrouped
+        conn.execute("UPDATE snippets SET group_id = NULL WHERE group_id = ?1", params![uuid]).map_err(|e| e.to_string())?;
+    }
     conn.execute("DELETE FROM groups WHERE uuid = ?1", params![uuid]).map_err(|e| e.to_string())?;
     drop(guard);
     trigger::invalidate_cache();
     Ok(())
+}
+
+/// Delete all snippets in a specific group
+pub fn delete_snippets_in_group(group_uuid: &str) -> Result<usize, String> {
+    let guard = DB.lock().unwrap();
+    let conn = guard.as_ref().ok_or("Database not initialized")?;
+    let count = conn.execute("DELETE FROM snippets WHERE group_id = ?1", params![group_uuid]).map_err(|e| e.to_string())?;
+    drop(guard);
+    trigger::invalidate_cache();
+    Ok(count)
 }
 
 /// Save an embedding for a snippet
