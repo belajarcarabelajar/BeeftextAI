@@ -1,6 +1,6 @@
 [package]
 name = "beeftextai"
-version = "0.2.4"
+version = "0.2.5"
 description = "BeefText AI — Modern Text Expander Powered by Ollama"
 authors = ["Tedi Rahmat"]
 edition = "2021"
