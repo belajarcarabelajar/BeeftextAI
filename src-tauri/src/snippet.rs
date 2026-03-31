@@ -69,10 +69,26 @@ impl Snippet {
         }
         match self.matching_mode {
             MatchingMode::Strict => {
-                match self.case_sensitivity {
+                let matches = match self.case_sensitivity {
                     CaseSensitivity::CaseSensitive => input.ends_with(&self.keyword),
                     CaseSensitivity::CaseInsensitive => input.to_lowercase().ends_with(&self.keyword.to_lowercase()),
+                };
+
+                // Word boundary check:
+                // Trigger only if keyword is at the start of input or preceded by a non-alphanumeric character.
+                if matches && input.len() > self.keyword.len() {
+                    let input_chars: Vec<char> = input.chars().collect();
+                    let kw_char_count = self.keyword.chars().count();
+                    if input_chars.len() >= kw_char_count + 1 {
+                        let prev_char_idx = input_chars.len() - kw_char_count - 1;
+                        if let Some(&prev_char) = input_chars.get(prev_char_idx) {
+                            if prev_char.is_alphanumeric() {
+                                return false; // In the middle of a word
+                            }
+                        }
+                    }
                 }
+                matches
             }
             MatchingMode::Loose => {
                 match self.case_sensitivity {
