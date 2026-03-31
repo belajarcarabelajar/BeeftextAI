@@ -33,6 +33,7 @@ Your goal is to help users manage their shortcuts (snippets) and answer question
 1. **Create/Update Snippets**: When a user wants to save or create a shortcut, respond with a JSON object followed by a brief explanation.
    Format: {"keyword": "!abc", "snippet": "expanded text", "name": "Name", "description": "Description", "group": "Group"}
    You MUST auto-generate a suitable `name`, `description`, and assign it to a logical `group`.
+   If one of the "User's existing groups" matches the context perfectly, use that exact group name. If no existing group fits, generate a concise new group name.
 2. **Query Snippets**: You can see the user's existing snippets below. If they ask "What is the shortcut for X?" or "List my email shortcuts", answer based on the provided context.
 3. **General Assistance**: Answer questions about how to use BeefText AI, its variables, or general productivity tips.
 
@@ -150,7 +151,17 @@ async fn chat_with_ai(message: String) -> Result<String, String> {
         format!("- Keyword: `{}` → \"{}\" ({})", s.keyword, s.snippet, s.name)
     }).collect::<Vec<_>>().join("\n");
     
-    let system = format!("{}\n\nUser's existing snippets:\n{}", SYSTEM_PROMPT, snippet_context);
+    let groups = store::get_all_groups().unwrap_or_default();
+    let group_context: String = groups.iter().map(|g| {
+        format!("- {}", g.name)
+    }).collect::<Vec<_>>().join("\n");
+    
+    let system = format!(
+        "{}\n\nUser's existing groups:\n{}\n\nUser's existing snippets:\n{}", 
+        SYSTEM_PROMPT, 
+        if group_context.is_empty() { "None".to_string() } else { group_context },
+        snippet_context
+    );
     
     let mut messages = vec![ChatMessage { role: "system".to_string(), content: system }];
     for (role, content) in &history {
