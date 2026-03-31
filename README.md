@@ -2,9 +2,9 @@
 
 BeefText AI is a modern, cross-platform text expansion utility built as a conceptual and spiritual successor to [Beeftext](https://github.com/xmichelo/Beeftext). It supercharges your daily typing workflows by combining instant local text expansions with the power of localized AI code generation, bringing text automation into the AI era.
 
-Built from scratch using **Tauri 2.x**, **Rust**, and **React**, BeefText AI is designed for blistering performance, low footprint, and high modularity. 
+Built from scratch using **Tauri 2.x**, **Rust**, and **React**, BeefText AI is designed for blistering performance, low footprint, and high modularity.
 
-*(A high-performance dark-theme UI with instant expansion feedback)*
+> A high-performance dark-theme UI with instant expansion feedback
 
 ---
 
@@ -37,6 +37,7 @@ Built from scratch using **Tauri 2.x**, **Rust**, and **React**, BeefText AI is 
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 1. **Node.js** v20+ & **npm**
 2. **Rust Environment** (`rustup default stable`)
 3. **[Ollama](https://ollama.com/)** running locally (`localhost:11434`)
@@ -62,14 +63,19 @@ To start the development server (Frontend + Rust Backend hot reload):
 npm run tauri dev
 ```
 
-### Production Build
+### Production Build & Auto-Updater
 
 For a completely standalone Windows `.msi` / `.exe` bundle, run:
 
 ```bash
 npm run tauri build
 ```
+
 *(Ensure all MSVC build tools are properly configured if on Windows.)*
+
+> **⚠️ Deploying a Release:** Building a signed release with the Auto-Updater enabled is a complex procedure involving strict environment variables (`TAURI_SIGNING_PRIVATE_KEY`), exact base64 parsing, and exact GitHub asset matching inside `latest.json`.
+>
+> **You MUST consult `CLAUDE.md` in the root directory for the meticulous step-by-step instructions on how to safely build, sign, update `latest.json`, and upload using `gh release`.**
 
 ## ⚙️ Configuration
 
