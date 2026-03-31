@@ -78,6 +78,9 @@ pub fn import_beeftext_json(json_content: &str) -> Result<ImportResult, String> 
         }
     }
 
+    let existing_snippets = store::get_all_snippets().unwrap_or_default();
+    let mut keyword_map: std::collections::HashMap<String, String> = existing_snippets.into_iter().map(|s| (s.keyword, s.uuid)).collect();
+
     // Import combos / snippets
     for bc in &data.combos {
         if bc.keyword.is_empty() && bc.snippet.is_empty() {
@@ -98,20 +101,43 @@ pub fn import_beeftext_json(json_content: &str) -> Result<ImportResult, String> 
             _ => CaseSensitivity::CaseSensitive,
         };
 
-        let mut s = Snippet::new(
-            bc.keyword.clone(),
-            bc.snippet.clone(),
-            bc.name.clone(),
-            bc.description.clone(),
-            group_id,
-        );
-        s.matching_mode = matching_mode;
-        s.case_sensitivity = case_sensitivity;
-        s.enabled = bc.enabled.unwrap_or(true);
+        if let Some(existing_uuid) = keyword_map.get(&bc.keyword) {
+            // Update existing snippet
+            let mut s = Snippet::new(
+                bc.keyword.clone(),
+                bc.snippet.clone(),
+                bc.name.clone(),
+                bc.description.clone(),
+                group_id,
+            );
+            s.uuid = existing_uuid.clone();
+            s.matching_mode = matching_mode;
+            s.case_sensitivity = case_sensitivity;
+            s.enabled = bc.enabled.unwrap_or(true);
 
-        match store::add_snippet(&s) {
-            Ok(_) => result.snippets_imported += 1,
-            Err(e) => result.errors.push(format!("Snippet '{}': {}", bc.keyword, e)),
+            match store::update_snippet(&s) {
+                Ok(_) => result.snippets_imported += 1,
+                Err(e) => result.errors.push(format!("Snippet '{}': {}", bc.keyword, e)),
+            }
+        } else {
+            // Add new snippet
+            let mut s = Snippet::new(
+                bc.keyword.clone(),
+                bc.snippet.clone(),
+                bc.name.clone(),
+                bc.description.clone(),
+                group_id,
+            );
+            s.matching_mode = matching_mode;
+            s.case_sensitivity = case_sensitivity;
+            s.enabled = bc.enabled.unwrap_or(true);
+            
+            keyword_map.insert(s.keyword.clone(), s.uuid.clone());
+
+            match store::add_snippet(&s) {
+                Ok(_) => result.snippets_imported += 1,
+                Err(e) => result.errors.push(format!("Snippet '{}': {}", bc.keyword, e)),
+            }
         }
     }
 

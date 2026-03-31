@@ -291,12 +291,32 @@ async fn get_snippet_stats() -> Result<(i64, i64, i64, i64), String> {
     store::get_snippet_stats()
 }
 
+#[derive(Clone, serde::Serialize)]
+struct EmbedProgress {
+    current: usize,
+    total: usize,
+    percentage: f64,
+}
+
 #[tauri::command]
-async fn force_re_embed_all() -> Result<usize, String> {
-    let snippets = store::get_all_snippets()?;
+async fn force_re_embed_all(resume: bool, app: tauri::AppHandle) -> Result<usize, String> {
+    use tauri::Emitter;
+    let mut snippets = store::get_all_snippets()?;
     let client = get_ollama();
     let mut count = 0;
-    for s in snippets {
+    
+    if resume {
+        let embeddings = store::get_all_embeddings()?;
+        let embedded_uuids: std::collections::HashSet<String> = embeddings.into_iter().map(|(id, _)| id).collect();
+        snippets.retain(|s| !embedded_uuids.contains(&s.uuid));
+    }
+    
+    let total = snippets.len();
+    if total == 0 {
+        return Ok(0);
+    }
+    
+    for (i, s) in snippets.iter().enumerate() {
         let text = format!("{} {} {} {}", s.name, s.keyword, s.description, s.snippet);
         if let Ok(embeddings) = client.embed(vec![text]).await {
             if let Some(emb) = embeddings.first() {
@@ -304,8 +324,20 @@ async fn force_re_embed_all() -> Result<usize, String> {
                 count += 1;
             }
         }
+        
+        // Emit progress
+        let _ = app.emit("embed_progress", EmbedProgress {
+            current: i + 1,
+            total,
+            percentage: ((i + 1) as f64 / total as f64) * 100.0,
+        });
     }
     Ok(count)
+}
+
+#[tauri::command]
+async fn clear_all_data() -> Result<(), String> {
+    store::clear_all_data()
 }
 
 // ─── Backup / Restore ─────────────────────────────────────────────────────────
@@ -486,6 +518,7 @@ pub fn run() {
             restore_from_json_cmd,
             get_preference,
             set_preference,
+            clear_all_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

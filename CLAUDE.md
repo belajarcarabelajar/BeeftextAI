@@ -2,7 +2,13 @@
 
 ## 1. Preparation
 
-Increase version in `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`.
+**CRITICAL: Synchronize the application version** everywhere before building a new release. 
+Increase the version number identically in:
+1. `package.json`
+2. `src-tauri/Cargo.toml`
+3. `src-tauri/tauri.conf.json`
+
+*(Note: The React frontend in `src/App.tsx` is now configured to fetch the version dynamically from Tauri using `getVersion()`, so you do not need to manually update the version string in the UI anymore.)*
 
 ## 2. Environment Setup (CRITICAL)
 

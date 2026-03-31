@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { getVersion } from "@tauri-apps/api/app";
+import { listen } from "@tauri-apps/api/event";
 import { useTranslation, Language } from "./i18n";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -54,6 +56,7 @@ export default function App() {
   const [ollamaOnline, setOllamaOnline] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [lang, setLang] = useState<Language>("both");
+  const [appVersion, setAppVersion] = useState("...");
 
   useEffect(() => {
     const check = async () => {
@@ -67,6 +70,9 @@ export default function App() {
     invoke<Language | null>("get_preference", { key: "language" })
       .then(v => { if (v) setLang(v); })
       .catch(() => {});
+    
+    getVersion().then(v => setAppVersion("v" + v)).catch(console.error);
+    
     return () => clearInterval(interval);
   }, []);
 
@@ -98,7 +104,7 @@ export default function App() {
             <div className="sidebar-logo-icon">⚡</div>
             <div>
               <div className="sidebar-logo-text">BeefText AI</div>
-              <div className="sidebar-logo-version">v0.1.3</div>
+              <div className="sidebar-logo-version">{appVersion}</div>
             </div>
           </div>
         </div>
@@ -889,6 +895,7 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
   const [textModel, setTextModel] = useState("nemotron-3-super:cloud");
   const [embedModel, setEmbedModel] = useState("nomic-embed-text");
   const [language, setLanguage] = useState("both");
+  const [appVersion, setAppVersion] = useState("...");
   const [models, setModels] = useState<{ name: string }[]>([]);
   const [hookActive, setHookActive] = useState(true);
   const [snippetCount, setSnippetCount] = useState(0);
@@ -898,6 +905,7 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [backingUp, setBackingUp] = useState(false);
   const [rebedding, setRebedding] = useState(false);
+  const [embedProgress, setEmbedProgress] = useState<{ current: number; total: number; percentage: number } | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const loadData = useCallback(async () => {
@@ -913,6 +921,15 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
     }).catch(() => {});
     invoke<Group[]>("get_groups").then(g => setGroupCount(g.length)).catch(() => {});
     invoke<BackupInfo[]>("list_backups").then(setBackups).catch(() => {});
+    getVersion().then(v => setAppVersion("v" + v)).catch(console.error);
+
+    const unlisten = listen<{ current: number; total: number; percentage: number }>("embed_progress", (event) => {
+      setEmbedProgress(event.payload);
+    });
+
+    return () => {
+      unlisten.then(f => f());
+    };
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -953,15 +970,19 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
     finally { setBackingUp(false); }
   };
 
-  const handleReEmbed = async () => {
+  const handleReEmbed = async (resume: boolean = false) => {
     setRebedding(true);
-    showToast("Starting background embedding... This may take a while.");
+    setEmbedProgress(null);
+    showToast(resume ? "Resuming embedding process..." : "Starting fresh embedding process...");
     try {
-      const count = await invoke<number>("force_re_embed_all");
-      showToast(`✅ Success! ${count} snippets embedded.`);
+      const count = await invoke<number>("force_re_embed_all", { resume });
+      showToast(`✅ Success! ${count} snippets processed.`);
       loadData();
     } catch (e) { showToast(String(e), "error"); }
-    finally { setRebedding(false); }
+    finally { 
+      setRebedding(false);
+      setTimeout(() => setEmbedProgress(null), 3000);
+    }
   };
 
   const handleRestoreBackup = async (filename: string) => {
@@ -1045,11 +1066,35 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
             <label>Status</label>
             <div className="status-indicator"><span className={`status-dot ${ollamaOnline ? "online" : "offline"}`} />{ollamaOnline ? "Connected" : "Disconnected"}</div>
           </div>
-          <div className="settings-row">
-            <label>Force Sync/Re-Embed</label>
-            <button className="btn btn-secondary" onClick={handleReEmbed} disabled={rebedding || !ollamaOnline}>
-              {rebedding ? <span className="spinner" /> : "🔄 Start Process"}
-            </button>
+          <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 12 }}>
+            <label>Semantic Search Sync</label>
+            <div style={{ display: "flex", gap: 10, width: "100%" }}>
+              <button className="btn btn-secondary" onClick={() => handleReEmbed(true)} disabled={rebedding || !ollamaOnline} style={{ flex: 1 }}>
+                {rebedding ? <span className="spinner" /> : "⏯ Resume Embedding"}
+              </button>
+              <button className="btn btn-danger btn-outline" onClick={() => { if(confirm("This will clear existing embeddings and start from scratch. Proceed?")) handleReEmbed(false) }} disabled={rebedding || !ollamaOnline} style={{ flex: 1 }}>
+                {rebedding ? <span className="spinner" /> : "🔄 Force All"}
+              </button>
+            </div>
+            
+            {embedProgress && (
+              <div className="progress-container" style={{ width: "100%", marginTop: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 12 }}>
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    Processing {embedProgress.current} of {embedProgress.total}
+                  </span>
+                  <span style={{ fontWeight: 600, color: "var(--accent-primary)" }}>
+                    {Math.round(embedProgress.percentage)}%
+                  </span>
+                </div>
+                <div className="progress-bar-bg">
+                  <div className="progress-bar-fill" style={{ width: `${embedProgress.percentage}%` }}></div>
+                </div>
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+              Embedding is required for OmniSearch (semantic). "Resume" skips snippets that already have embeddings. "Force All" recalculates everything.
+            </div>
           </div>
           {models.length > 0 && (
             <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
@@ -1125,7 +1170,7 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
 
         <div className="settings-section">
           <h3>ℹ️ About</h3>
-          <div className="settings-row"><label>Version</label><span style={{ color: "var(--text-secondary)" }}>BeefText AI v0.1.4</span></div>
+          <div className="settings-row"><label>Version</label><span style={{ color: "var(--text-secondary)" }}>BeefText AI {appVersion}</span></div>
           <div className="settings-row"><label>License</label><span style={{ color: "var(--text-secondary)" }}>MIT License</span></div>
           <div className="settings-row"><label>Inspired by</label><span style={{ color: "var(--text-secondary)" }}>Beeftext by Xavier Michelon</span></div>
         </div>
