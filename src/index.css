@@ -952,11 +952,16 @@ body {
   font-size: 12px;
   padding: 2px 4px;
   border-radius: 4px;
-  
+  color: var(--text-secondary);
 }
 
 .group-action-btn:hover {
   background: rgba(148, 163, 184, 0.15);
+}
+
+.btn-delete-icon {
+  color: inherit;
+  line-height: 1;
 }
 
 /* ── Dropdown Menu ── */

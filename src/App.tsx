@@ -684,6 +684,32 @@ function ImportModal({ onClose, onImport, showToast }: {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Chat Token Utilities
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Estimate token count using word-based approximation (same method as Rust backend) */
+function estimateTokenCount(text: string): number {
+  if (!text.trim()) return 0;
+  const words = text.trim().split(/\s+/).length;
+  // Word-based: words * 1.5 ≈ tokens
+  const wordBased = Math.round((words * 3) / 2);
+  // Char-based: chars / 4
+  const charBased = Math.ceil(text.length / 4);
+  return Math.max(wordBased, charBased);
+}
+
+/** Truncate text to approximately maxTokens */
+function truncateToTokens(text: string, maxTokens: number): string {
+  if (maxTokens <= 0) return "";
+  if (estimateTokenCount(text) <= maxTokens) return text;
+  // Take ~maxTokens * 4 chars, then cut to word boundary
+  let result = text.slice(0, maxTokens * 4);
+  const lastSpace = result.lastIndexOf(' ');
+  if (lastSpace > 0) result = result.slice(0, lastSpace);
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Chat Page
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -703,9 +729,18 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
-    const userMsg = input.trim();
+    const MAX_INPUT_TOKENS = 2000;
+    const rawMsg = input.trim();
+    const userMsg = truncateToTokens(rawMsg, MAX_INPUT_TOKENS);
+    const tokens = estimateTokenCount(userMsg);
+    const wasTruncated = userMsg.length < rawMsg.length;
+    console.log(`[TOKEN] sendMessage | chars: ${userMsg.length} | tokens: ~${tokens}${wasTruncated ? ` | truncated from ${rawMsg.length} chars` : ''}`);
     setInput("");
-    setMessages(prev => [...prev, { role: "user", content: userMsg }]);
+    // Add user message + keep only last 10 messages to reduce backend load
+    setMessages(prev => {
+      const updated = [...prev, { role: "user", content: userMsg }];
+      return updated.length > 10 ? updated.slice(updated.length - 10) : updated;
+    });
     setLoading(true);
     try {
       const response = await invoke<string>("chat_with_ai", { message: userMsg });

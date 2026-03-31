@@ -59,6 +59,8 @@ struct ChatRequest {
     model: String,
     messages: Vec<ChatMessage>,
     stream: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    num_ctx: Option<i32>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -106,12 +108,13 @@ impl OllamaClient {
     }
 
     /// Chat with Ollama (multi-turn conversation)
-    pub async fn chat(&self, messages: Vec<ChatMessage>) -> Result<ChatMessage, String> {
+    pub async fn chat(&self, messages: Vec<ChatMessage>, num_ctx: Option<i32>) -> Result<ChatMessage, String> {
         let url = format!("{}/api/chat", self.base_url);
         let req = ChatRequest {
             model: self.text_model.clone(),
             messages,
             stream: false,
+            num_ctx,
         };
         let resp = self.client.post(&url).json(&req).send().await.map_err(|e| e.to_string())?;
         let data: ChatResponse = resp.json().await.map_err(|e| e.to_string())?;
