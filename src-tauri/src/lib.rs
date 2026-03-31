@@ -146,7 +146,7 @@ async fn chat_with_ai(message: String) -> Result<String, String> {
     
     let history = store::get_chat_history(20)?;
     let snippets = store::get_all_snippets().unwrap_or_default();
-    let snippet_context: String = snippets.iter().take(20).map(|s| {
+    let snippet_context: String = snippets.iter().take(100).map(|s| {
         format!("- Keyword: `{}` → \"{}\" ({})", s.keyword, s.snippet, s.name)
     }).collect::<Vec<_>>().join("\n");
     
@@ -284,8 +284,25 @@ async fn get_snippet_count_by_group() -> Result<Vec<(Option<String>, i64)>, Stri
 }
 
 #[tauri::command]
-async fn get_snippet_stats() -> Result<(i64, i64, i64), String> {
+async fn get_snippet_stats() -> Result<(i64, i64, i64, i64), String> {
     store::get_snippet_stats()
+}
+
+#[tauri::command]
+async fn force_re_embed_all() -> Result<usize, String> {
+    let snippets = store::get_all_snippets()?;
+    let client = get_ollama();
+    let mut count = 0;
+    for s in snippets {
+        let text = format!("{} {} {} {}", s.name, s.keyword, s.description, s.snippet);
+        if let Ok(embeddings) = client.embed(vec![text]).await {
+            if let Some(emb) = embeddings.first() {
+                let _ = store::save_embedding(&s.uuid, emb);
+                count += 1;
+            }
+        }
+    }
+    Ok(count)
 }
 
 // ─── Backup / Restore ─────────────────────────────────────────────────────────
@@ -466,6 +483,7 @@ pub fn run() {
             is_notifications_enabled,
             get_snippet_count_by_group,
             get_snippet_stats,
+            force_re_embed_all,
             create_backup,
             list_backups,
             restore_backup_cmd,

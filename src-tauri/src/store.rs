@@ -313,7 +313,7 @@ pub fn clear_all_data() -> Result<(), String> {
 }
 
 /// Get snippet usage stats
-pub fn get_snippet_stats() -> Result<(i64, i64, i64), String> {
+pub fn get_snippet_stats() -> Result<(i64, i64, i64, i64), String> {
     let guard = DB.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let total: i64 = conn.query_row("SELECT COUNT(*) FROM snippets", [], |r| r.get(0))
@@ -322,5 +322,7 @@ pub fn get_snippet_stats() -> Result<(i64, i64, i64), String> {
         .map_err(|e| e.to_string())?;
     let ai_count: i64 = conn.query_row("SELECT COUNT(*) FROM snippets WHERE ai_generated = 1", [], |r| r.get(0))
         .map_err(|e| e.to_string())?;
-    Ok((total, enabled, ai_count))
+    let embedded: i64 = conn.query_row("SELECT COUNT(*) FROM snippets WHERE embedding IS NOT NULL", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    Ok((total, enabled, ai_count, embedded))
 }

@@ -418,14 +418,26 @@ function SnippetModal({ snippet, groups, onClose, onSave, showToast }: {
 
   const handleSave = async () => {
     if (!keyword.trim() || !text.trim()) { showToast("Keyword and snippet text are required", "error"); return; }
+    
+    // Check for duplicate keyword
+    try {
+      const allSnippets = await invoke<Snippet[]>("get_snippets");
+      const isDuplicate = allSnippets.some(s => s.keyword === keyword.trim() && s.uuid !== snippet?.uuid);
+      if (isDuplicate) {
+        if (!window.confirm(`Apakah kamu yakin? Keyword '${keyword.trim()}' sudah pernah digunakan untuk snippet lainnya.`)) {
+          return;
+        }
+      }
+    } catch (e) { console.error(e); }
+
     setSaving(true);
     try {
       if (snippet) {
         await invoke("update_snippet_cmd", {
-          s: { ...snippet, keyword, name, snippet: text, description: desc, group_id: groupId, matching_mode: matchingMode, case_sensitivity: caseSensitivity, modified_at: new Date().toISOString() }
+          s: { ...snippet, keyword: keyword.trim(), name, snippet: text, description: desc, group_id: groupId, matching_mode: matchingMode, case_sensitivity: caseSensitivity, modified_at: new Date().toISOString() }
         });
       } else {
-        await invoke("add_snippet", { keyword, snippetText: text, name, description: desc, groupId, aiGenerated: false });
+        await invoke("add_snippet", { keyword: keyword.trim(), snippetText: text, name, description: desc, groupId, aiGenerated: false });
       }
       onSave();
     } catch (e) { showToast(String(e), "error"); }
@@ -733,7 +745,16 @@ function MessageContent({ content, showToast }: { content: string; showToast: (m
     const textAfter = content.substring(content.lastIndexOf("}") + 1);
     const handleSave = async () => {
       try {
-        await invoke("add_snippet", { keyword: snippetJson.keyword || "//new", snippetText: snippetJson.snippet || "", name: snippetJson.name || "", description: snippetJson.description || "", groupId: null, aiGenerated: true });
+        const generatedKeyword = snippetJson.keyword || "//new";
+        const allSnippets = await invoke<Snippet[]>("get_snippets");
+        const isDuplicate = allSnippets.some(s => s.keyword === generatedKeyword);
+        if (isDuplicate) {
+          if (!window.confirm(`Apakah kamu yakin? Keyword '${generatedKeyword}' sudah pernah digunakan untuk snippet lainnya.`)) {
+            return;
+          }
+        }
+
+        await invoke("add_snippet", { keyword: generatedKeyword, snippetText: snippetJson.snippet || "", name: snippetJson.name || "", description: snippetJson.description || "", groupId: null, aiGenerated: true });
         showToast("✅ Snippet saved!");
       } catch (e) { showToast(String(e), "error"); }
     };
@@ -861,8 +882,10 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
   const [snippetCount, setSnippetCount] = useState(0);
   const [groupCount, setGroupCount] = useState(0);
   const [aiCount, setAiCount] = useState(0);
+  const [embedCount, setEmbedCount] = useState(0);
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [backingUp, setBackingUp] = useState(false);
+  const [rebedding, setRebedding] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const loadData = useCallback(async () => {
@@ -873,8 +896,8 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
     invoke<{ name: string }[]>("ollama_models").then(setModels).catch(() => {});
     invoke<boolean>("is_keyboard_hook_active").then(setHookActive).catch(() => {});
     invoke<boolean>("is_notifications_enabled").then(setNotificationsEnabled).catch(() => {});
-    invoke<[number, number, number]>("get_snippet_stats").then(([t, _e, ai]) => {
-      setSnippetCount(t); setAiCount(ai);
+    invoke<[number, number, number, number]>("get_snippet_stats").then(([t, _e, ai, emb]) => {
+      setSnippetCount(t); setAiCount(ai); setEmbedCount(emb);
     }).catch(() => {});
     invoke<Group[]>("get_groups").then(g => setGroupCount(g.length)).catch(() => {});
     invoke<BackupInfo[]>("list_backups").then(setBackups).catch(() => {});
@@ -918,6 +941,17 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
     finally { setBackingUp(false); }
   };
 
+  const handleReEmbed = async () => {
+    setRebedding(true);
+    showToast("Starting background embedding... This may take a while.");
+    try {
+      const count = await invoke<number>("force_re_embed_all");
+      showToast(`✅ Success! ${count} snippets embedded.`);
+      loadData();
+    } catch (e) { showToast(String(e), "error"); }
+    finally { setRebedding(false); }
+  };
+
   const handleRestoreBackup = async (filename: string) => {
     try {
       const [s, g] = await invoke<[number, number]>("restore_backup_cmd", { filename });
@@ -952,6 +986,10 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
           <div className="stat-card">
             <div className="stat-value">{groupCount}</div>
             <div className="stat-label">Groups</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">{embedCount}/{snippetCount}</div>
+            <div className="stat-label">AI Embedded</div>
           </div>
           <div className="stat-card">
             <div className="stat-value">{aiCount}</div>
@@ -994,6 +1032,12 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
           <div className="settings-row">
             <label>Status</label>
             <div className="status-indicator"><span className={`status-dot ${ollamaOnline ? "online" : "offline"}`} />{ollamaOnline ? "Connected" : "Disconnected"}</div>
+          </div>
+          <div className="settings-row">
+            <label>Force Sync/Re-Embed</label>
+            <button className="btn btn-secondary" onClick={handleReEmbed} disabled={rebedding || !ollamaOnline}>
+              {rebedding ? <span className="spinner" /> : "🔄 Start Process"}
+            </button>
           </div>
           {models.length > 0 && (
             <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
