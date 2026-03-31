@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "BeefText AI",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "identifier": "com.tedi-rahmat.beeftextai",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -38,7 +38,7 @@
 
   "plugins": {
     "updater": {
-      "pubkey": "RWR1hgIQp+Pkkz0DfljOUvhQB39/31mtzx/K0LiguGxTt3YzF6Wp/pTI",
+      "pubkey": "RWSEddPtkftarqgTOr4OSvf5jg/OV2zqaAqsoyXuSYVNsFGgSr8UOZ37",
       "endpoints": [
         "https://github.com/belajarcarabelajar/BeeftextAI/releases/latest/download/latest.json"
       ]

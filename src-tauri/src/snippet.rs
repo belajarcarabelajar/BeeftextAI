@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 
 /// Matching mode — mirrors Beeftext's EMatchingMode
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]

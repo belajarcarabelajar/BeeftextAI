@@ -1,4 +1,4 @@
-use crate::engine::{check_and_substitute, perform_substitution};
+use crate::engine::perform_substitution;
 use crate::ollama::OllamaClient;
 use crate::snippet::Snippet;
 use crate::store;
@@ -38,7 +38,7 @@ impl WorkerState {
     /// Get cached snippets, refreshing if version mismatch
     fn get_cached_snippets(&self) -> Vec<Snippet> {
         let current_version = self.cache_version.load(Ordering::Relaxed);
-        let mut guard = self.cache.lock();
+        let guard = self.cache.lock();
 
         if let Some((version, snippets)) = guard.as_ref() {
             if *version == current_version {
@@ -78,8 +78,6 @@ impl WorkerState {
 /// A trigger job to be processed by the worker
 struct TriggerJob {
     buffer: String,
-    ollama: OllamaClient,
-    kb: Arc<crate::keyboard::KeyboardState>,
 }
 
 /// Spawn the persistent worker thread if not already running
@@ -176,18 +174,9 @@ pub fn set_keyboard_state(kb: Arc<crate::keyboard::KeyboardState>) {
 
 /// Enqueue a buffer for trigger checking (debounced)
 pub fn enqueue_trigger(buffer: String) {
-    let ollama = get_ollama_for_worker();
-    let kb = if let Some(kb) = KEYBOARD_WORKER.get() {
-        Arc::clone(kb)
-    } else {
-        Arc::new(crate::keyboard::KeyboardState::new())
-    };
-
     if let Some(sender) = WORKER_STATE.sender.lock().as_ref() {
         let job = TriggerJob {
             buffer,
-            ollama,
-            kb,
         };
         // Non-blocking send — if worker is overwhelmed, drop the job
         let _ = sender.send(job);
@@ -236,6 +225,7 @@ async fn check_and_substitute_internal(
 }
 
 /// Stop the worker thread gracefully
+#[allow(dead_code)]
 pub fn stop_worker() {
     WORKER_STATE.stop_flag.store(true, Ordering::Relaxed);
     let mut sender_guard = WORKER_STATE.sender.lock();
