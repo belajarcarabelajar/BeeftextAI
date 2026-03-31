@@ -8,6 +8,7 @@ mod engine;
 mod clipboard;
 mod variable;
 mod backup;
+mod trigger;
 
 use ollama::{OllamaClient, ChatMessage};
 use snippet::Snippet;
@@ -237,25 +238,16 @@ async fn generate_cheat_sheet() -> Result<String, String> {
 
 #[tauri::command]
 async fn start_keyboard_hook() -> Result<String, String> {
+    // Ensure worker is running
+    trigger::ensure_worker_running();
+
     let kb = Arc::clone(&KEYBOARD);
-    
+    trigger::set_keyboard_state(Arc::clone(&KEYBOARD));
+
     kb.start_listening(move |buffer| {
-        // This runs on the keyboard thread — spawn async work on tokio
-        let ollama = get_ollama();
-        let buf = buffer.clone();
-        let kb_ref = Arc::clone(&KEYBOARD);
-        // Use a blocking approach since we're in a sync callback
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-            rt.block_on(async {
-                engine::check_and_substitute(&buf, &ollama, &kb_ref).await;
-            });
-        });
+        trigger::enqueue_trigger(buffer);
     });
-    
+
     Ok("Keyboard hook started".to_string())
 }
 
@@ -372,20 +364,12 @@ pub fn run() {
     }
 
     // Auto-start keyboard hook
+    trigger::ensure_worker_running();
+    trigger::set_keyboard_state(Arc::clone(&KEYBOARD));
+
     let kb = Arc::clone(&KEYBOARD);
     kb.start_listening(move |buffer| {
-        let ollama = get_ollama();
-        let buf = buffer.clone();
-        let kb_ref = Arc::clone(&KEYBOARD);
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-            rt.block_on(async {
-                engine::check_and_substitute(&buf, &ollama, &kb_ref).await;
-            });
-        });
+        trigger::enqueue_trigger(buffer);
     });
 
     tauri::Builder::default()

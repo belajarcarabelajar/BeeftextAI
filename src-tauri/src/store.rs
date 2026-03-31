@@ -1,4 +1,5 @@
 use crate::snippet::Snippet;
+use crate::trigger;
 use rusqlite::{Connection, params};
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
@@ -100,6 +101,8 @@ pub fn add_snippet(s: &Snippet) -> Result<(), String> {
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         params![s.uuid, s.name, s.keyword, s.snippet, s.description, mm, cs, s.group_id, s.enabled as i32, s.created_at, s.modified_at, s.last_used_at, s.ai_generated as i32],
     ).map_err(|e| e.to_string())?;
+    drop(guard);
+    trigger::invalidate_cache();
     Ok(())
 }
 
@@ -113,6 +116,8 @@ pub fn update_snippet(s: &Snippet) -> Result<(), String> {
         "UPDATE snippets SET name=?1, keyword=?2, snippet=?3, description=?4, matching_mode=?5, case_sensitivity=?6, group_id=?7, enabled=?8, modified_at=?9, last_used_at=?10, ai_generated=?11 WHERE uuid=?12",
         params![s.name, s.keyword, s.snippet, s.description, mm, cs, s.group_id, s.enabled as i32, s.modified_at, s.last_used_at, s.ai_generated as i32, s.uuid],
     ).map_err(|e| e.to_string())?;
+    drop(guard);
+    trigger::invalidate_cache();
     Ok(())
 }
 
@@ -121,6 +126,8 @@ pub fn delete_snippet(uuid: &str) -> Result<(), String> {
     let guard = DB.lock().unwrap();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     conn.execute("DELETE FROM snippets WHERE uuid = ?1", params![uuid]).map_err(|e| e.to_string())?;
+    drop(guard);
+    trigger::invalidate_cache();
     Ok(())
 }
 
@@ -152,6 +159,8 @@ pub fn add_group(g: &Group) -> Result<(), String> {
         "INSERT INTO groups (uuid, name, description, enabled, created_at, modified_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         params![g.uuid, g.name, g.description, g.enabled as i32, g.created_at, g.modified_at],
     ).map_err(|e| e.to_string())?;
+    drop(guard);
+    trigger::invalidate_cache();
     Ok(())
 }
 
@@ -163,6 +172,8 @@ pub fn update_group(g: &Group) -> Result<(), String> {
         "UPDATE groups SET name=?1, description=?2, enabled=?3, modified_at=?4 WHERE uuid=?5",
         params![g.name, g.description, g.enabled as i32, g.modified_at, g.uuid],
     ).map_err(|e| e.to_string())?;
+    drop(guard);
+    trigger::invalidate_cache();
     Ok(())
 }
 
@@ -173,6 +184,8 @@ pub fn delete_group(uuid: &str) -> Result<(), String> {
     // Move snippets to ungrouped
     conn.execute("UPDATE snippets SET group_id = NULL WHERE group_id = ?1", params![uuid]).map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM groups WHERE uuid = ?1", params![uuid]).map_err(|e| e.to_string())?;
+    drop(guard);
+    trigger::invalidate_cache();
     Ok(())
 }
 
@@ -272,6 +285,8 @@ pub fn toggle_snippet_enabled(uuid: &str, enabled: bool) -> Result<(), String> {
         "UPDATE snippets SET enabled = ?1, modified_at = ?2 WHERE uuid = ?3",
         params![enabled as i32, chrono::Utc::now().to_rfc3339(), uuid],
     ).map_err(|e| e.to_string())?;
+    drop(guard);
+    trigger::invalidate_cache();
     Ok(())
 }
 
@@ -309,6 +324,8 @@ pub fn clear_all_data() -> Result<(), String> {
         DELETE FROM groups;
         DELETE FROM chat_history;
     ").map_err(|e| e.to_string())?;
+    drop(guard);
+    trigger::invalidate_cache();
     Ok(())
 }
 
