@@ -21,11 +21,20 @@ use std::sync::Arc;
 static KEYBOARD: Lazy<Arc<KeyboardState>> = Lazy::new(|| Arc::new(KeyboardState::new()));
 
 fn get_ollama() -> OllamaClient {
-    OllamaClient::new(
-        "http://localhost:11434".to_string(),
-        "nemotron-3-super:cloud".to_string(),
-        "nomic-embed-text".to_string(),
-    )
+    let base_url = store::get_preference("ollama_url")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "http://localhost:11434".to_string());
+    let text_model = store::get_preference("text_model")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "nemotron-3-super:cloud".to_string());
+    let embed_model = store::get_preference("embed_model")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "nomic-embed-text".to_string());
+
+    OllamaClient::new(base_url, text_model, embed_model)
 }
 
 const SYSTEM_PROMPT: &str = r#"You are an AI assistant for BeefText AI, a smart text expander.
@@ -357,63 +366,144 @@ struct ReEmbedResult {
     failures: Vec<EmbedFailure>,
 }
 
+/// Embedding configuration
+const DEFAULT_EMBED_BATCH_SIZE: usize = 8;
+const DEFAULT_EMBED_MAX_TOKENS: usize = 8192;
+
+#[derive(Clone, Debug)]
+struct EmbedConfig {
+    /// Maximum tokens per text before truncation (default: 8192 for nomic-embed-text)
+    max_tokens: usize,
+    /// Number of snippets to batch in a single API call (default: 8)
+    batch_size: usize,
+    /// Partition number for distributed embedding (0 = all partitions, n = only partition n of total)
+    partition: usize,
+    /// Total partitions for distributed embedding
+    total_partitions: usize,
+}
+
+impl Default for EmbedConfig {
+    fn default() -> Self {
+        Self {
+            max_tokens: DEFAULT_EMBED_MAX_TOKENS,
+            batch_size: DEFAULT_EMBED_BATCH_SIZE,
+            partition: 0,
+            total_partitions: 1,
+        }
+    }
+}
+
+fn make_embed_text(name: &str, keyword: &str, description: &str, snippet: &str, max_tokens: usize) -> String {
+    // Combine all fields with separators
+    let combined = format!("{} {} {} {}", name, keyword, description, snippet);
+    token::truncate_to_tokens(&combined, max_tokens)
+}
+
 #[tauri::command]
-async fn force_re_embed_all(resume: bool, app: tauri::AppHandle) -> Result<ReEmbedResult, String> {
+async fn force_re_embed_all(resume: bool, app: tauri::AppHandle, batch_size: Option<usize>, max_tokens: Option<usize>, partition: Option<usize>, total_partitions: Option<usize>) -> Result<ReEmbedResult, String> {
     use tauri::Emitter;
-    let mut snippets = store::get_all_snippets()?;
+    let all_snippets = store::get_all_snippets()?;
     let client = get_ollama();
+
+    let config = EmbedConfig {
+        max_tokens: max_tokens.unwrap_or(DEFAULT_EMBED_MAX_TOKENS),
+        batch_size: batch_size.unwrap_or(DEFAULT_EMBED_BATCH_SIZE),
+        partition: partition.unwrap_or(0),
+        total_partitions: total_partitions.unwrap_or(1),
+    };
+
+    // Collect already-embedded UUIDs if resuming or filtering
+    let embedded_uuids: std::collections::HashSet<String> = if resume || config.total_partitions > 1 {
+        let embeddings = store::get_all_embeddings()?;
+        embeddings.into_iter().map(|(id, _)| id).collect()
+    } else {
+        std::collections::HashSet::new()
+    };
+
+    // Filter snippets by partition and resume status
+    let snippets: Vec<Snippet> = all_snippets.into_iter().enumerate().filter_map(|(i, s)| {
+        // Partition filter
+        if config.total_partitions > 1 && i % config.total_partitions != config.partition {
+            return None;
+        }
+        // Resume filter: skip already embedded
+        if resume && embedded_uuids.contains(&s.uuid) {
+            return None;
+        }
+        Some(s)
+    }).collect();
+
     let mut count = 0;
     let mut failures = Vec::new();
-
-    if resume {
-        let embeddings = store::get_all_embeddings()?;
-        let embedded_uuids: std::collections::HashSet<String> = embeddings.into_iter().map(|(id, _)| id).collect();
-        snippets.retain(|s| !embedded_uuids.contains(&s.uuid));
-    }
 
     let total = snippets.len();
     if total == 0 {
         return Ok(ReEmbedResult { successful: 0, failed: 0, failures: vec![] });
     }
 
-    for (i, s) in snippets.iter().enumerate() {
-        let text = format!("{} {} {} {}", s.name, s.keyword, s.description, s.snippet);
-        let result = client.embed(vec![text]).await;
+    // Process in batches
+    for batch_start in (0..total).step_by(config.batch_size) {
+        let batch_end = (batch_start + config.batch_size).min(total);
+        let batch = &snippets[batch_start..batch_end];
+
+        // Prepare batch texts with truncation
+        let texts: Vec<String> = batch.iter().map(|s| {
+            make_embed_text(&s.name, &s.keyword, &s.description, &s.snippet, config.max_tokens)
+        }).collect();
+
+        let result = client.embed(texts).await;
 
         match result {
             Ok(embeddings) => {
-                if let Some(emb) = embeddings.first() {
-                    if store::save_embedding(&s.uuid, emb).is_ok() {
+                for (i, embedding) in embeddings.iter().enumerate() {
+                    let snippet = &batch[i];
+                    if store::save_embedding(&snippet.uuid, embedding).is_ok() {
                         count += 1;
                     } else {
                         failures.push(EmbedFailure {
-                            uuid: s.uuid.clone(),
-                            name: s.name.clone(),
+                            uuid: snippet.uuid.clone(),
+                            name: snippet.name.clone(),
                             reason: "Failed to save embedding to database".to_string(),
                         });
                     }
-                } else {
-                    failures.push(EmbedFailure {
-                        uuid: s.uuid.clone(),
-                        name: s.name.clone(),
-                        reason: "Ollama returned empty embeddings array".to_string(),
-                    });
                 }
             }
-            Err(e) => {
-                failures.push(EmbedFailure {
-                    uuid: s.uuid.clone(),
-                    name: s.name.clone(),
-                    reason: format!("Ollama API error: {}", e),
-                });
+            Err(_e) => {
+                // If batch fails, retry individually with more aggressive truncation
+                for snippet in batch {
+                    let text = make_embed_text(&snippet.name, &snippet.keyword, &snippet.description, &snippet.snippet, config.max_tokens / 2);
+                    match client.embed(vec![text]).await {
+                        Ok(embeddings) => {
+                            if let Some(emb) = embeddings.first() {
+                                if store::save_embedding(&snippet.uuid, emb).is_ok() {
+                                    count += 1;
+                                } else {
+                                    failures.push(EmbedFailure {
+                                        uuid: snippet.uuid.clone(),
+                                        name: snippet.name.clone(),
+                                        reason: "Failed to save embedding to database".to_string(),
+                                    });
+                                }
+                            }
+                        }
+                        Err(e2) => {
+                            failures.push(EmbedFailure {
+                                uuid: snippet.uuid.clone(),
+                                name: snippet.name.clone(),
+                                reason: format!("Ollama API error: {} (tried halved context)", e2),
+                            });
+                        }
+                    }
+                }
             }
         }
 
         // Emit progress
+        let current = batch_end;
         let _ = app.emit("embed_progress", EmbedProgress {
-            current: i + 1,
+            current,
             total,
-            percentage: ((i + 1) as f64 / total as f64) * 100.0,
+            percentage: (current as f64 / total as f64) * 100.0,
         });
     }
 
