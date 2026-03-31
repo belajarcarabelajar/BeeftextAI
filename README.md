@@ -71,7 +71,7 @@ For a completely standalone Windows `.msi` / `.exe` bundle, run:
 npm run tauri build
 ```
 
-*(Ensure all MSVC build tools are properly configured if on Windows.)*
+_Note: Ensure all MSVC build tools are properly configured if on Windows._
 
 > **⚠️ Deploying a Release:** Building a signed release with the Auto-Updater enabled is a complex procedure involving strict environment variables (`TAURI_SIGNING_PRIVATE_KEY`), exact base64 parsing, and exact GitHub asset matching inside `latest.json`.
 >
@@ -95,4 +95,4 @@ Contributions to BeefText AI are strictly welcomed! If you have suggestions or f
 
 ## 📄 License
 
-This project is licensed under the MIT License. It was heavily inspired by the original C++/Qt project *[Beeftext](https://github.com/xmichelo/Beeftext)* by Xavier Michelon.
+This project is licensed under the MIT License. It was heavily inspired by the original C++/Qt project _[Beeftext](https://github.com/xmichelo/Beeftext)_ by Xavier Michelon.
