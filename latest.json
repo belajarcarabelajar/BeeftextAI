@@ -1,11 +1,11 @@
 {
-  "version": "0.1.4",
-  "notes": "🚀 Beeftext AI v0.1.4\n\nFeatures:\n- AI Chat Auto-categorization: Chatbot now cross-references existing groups and auto-creates them if they don't exist.\n- Global Keyboard Trigger Stability Improvements.\n- UI Enhancements.",
-  "pub_date": "2026-03-31T06:22:00Z",
+  "version": "0.1.5",
+  "notes": "🚀 Beeftext AI v0.1.5\n\nChanges:\n- Replace all app icons with Beeftext AI logo (Windows, macOS, iOS, Android)\n- Fix trigger worker compile errors",
+  "pub_date": "2026-03-31T12:50:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSMWhnSVFwK1BrazhIYVBLR1VFbWdWV1V6aUVjeHhxeUJ6NENSOTc3Wk41T0tBK2YzejYwVDVudzhzUUlHV3lYemdreDBmeWZ2VGJVbWNQMEpvMzdZRGdHbGpTNGFyOXdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTM4MDY4CWZpbGU6QmVlZlRleHQuQUlfMC4xLjRfeDY0LXNldHVwLmV4ZS56aXAKRVlwMGdwZngxdTFvL1RjeC9zUnFWRWpweHZZeEpkS0x4MXUwVy9oazlCM3BSNWRZS2RpZ0pQMkp5VmNLUk9ZSmRFcE5EOElNNWkxWC9IeEl6Y1NPQ1E9PQo=",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.1.4/BeefText.AI_0.1.4_x64-setup.exe.zip"
+      "signature": "",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.1.5/BeefText.AI_0.1.4_x64-setup.exe.zip"
     }
   }
 }
