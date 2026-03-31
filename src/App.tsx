@@ -1097,7 +1097,13 @@ function UpdateChecker({ showToast }: { showToast: (m: string, t?: "success" | "
         showToast("✅ Application is up to date");
       }
     } catch (e) {
-      showToast(String(e), "error");
+      const errMsg = String(e);
+      // Tauri updater throws this specific error if the latest.json endpoint returns a 404 (e.g. no release exists yet)
+      if (errMsg.includes("JSON") || errMsg.includes("404")) {
+        showToast("✅ You are already on the latest version");
+      } else {
+        showToast(`Update Check Failed: ${errMsg}`, "error");
+      }
     } finally {
       setChecking(false);
     }
