@@ -1,11 +1,11 @@
 {
-  "version": "0.2.4",
-  "notes": "## Bug Fixes\n- **Ollama context length errors**: Implemented token-aware batching system for embeddings with configurable batch size, max tokens, and partition support for distributed processing\n- **OmniSearch clickability**: Search results are now fully clickable with explicit Edit button for direct snippet editing",
-  "pub_date": "2026-03-31T00:00:00Z",
+  "version": "0.2.5",
+  "notes": "## Bug Fixes\n- **Token-aware context management**: Improved AI chat context handling for Ollama\n- **OmniSearch**: Click search results to edit snippets directly\n- **Embedding error messages**: Better error messages for image content\n- **Embedding failure tracking**: Real-time language update on failures",
+  "pub_date": "2026-04-01T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL2kvL29jSk1nb0plWld2RFEzWGt5dFFSbklkV2tjTkdQLzY0eThkei9QMVQzMzZBWThwN2FYdGFkVkxDbldrUDZhUjdQaE5xVSt3aG9XQWxTN0lmMWdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTc1ODAxCWZpbGU6QmVlZlRleHQgQUlfMC4yLjRfeDY0LXNldHVwLmV4ZQpSN3JuMXVtaFdCZnJtdzF3VlFrWWpwRmdHL3FvY2VjVDEvQWJyYmNXZkZmamZVMm83OWFOTXBabWkwK2hRYVhPbFBUODMrYU5POXdROTZYdlNVb3ZCUT09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.4/BeefText.AI_0.2.4_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3BZQitOaXJyNEdhZ1FSWUMrejlBVTE0REd1U01nNmhDbTR6a1kxL3htanYvNHU0S1FwbTBqS1NXRlhLVVc3UE5oZWVWSUVYRTZtOWNna1ZvT0pMTFE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTc4NjEwCWZpbGU6QmVlZlRleHQgQUlfMC4yLjVfeDY0LXNldHVwLmV4ZQozb3NFMGFmL0UxbUk1THNaQWVHYXg0ZndwRmZXc3hXR3J6TGt1a2RiTW9qSzg0bE5TNW9DSjBrWlVlQk1OMm41VmNvR3l4RDhDTkdrbFVxNUpMcXpDdz09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.5/BeefText.AI_0.2.5_x64-setup.exe"
     }
   }
 }
