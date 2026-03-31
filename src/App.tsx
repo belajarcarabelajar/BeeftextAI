@@ -1113,7 +1113,7 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
 
         <div className="settings-section">
           <h3>ℹ️ About</h3>
-          <div className="settings-row"><label>Version</label><span style={{ color: "var(--text-secondary)" }}>BeefText AI v0.1.3</span></div>
+          <div className="settings-row"><label>Version</label><span style={{ color: "var(--text-secondary)" }}>BeefText AI v0.1.4</span></div>
           <div className="settings-row"><label>License</label><span style={{ color: "var(--text-secondary)" }}>MIT License</span></div>
           <div className="settings-row"><label>Inspired by</label><span style={{ color: "var(--text-secondary)" }}>Beeftext by Xavier Michelon</span></div>
         </div>
