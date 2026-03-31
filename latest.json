@@ -1,10 +1,10 @@
 {
   "version": "0.2.4",
-  "notes": "## Improvements\n- **Token-aware context management**: Chat now respects model context limits with proper budget allocation\n- **Reduced system prompt**: Compacted to essential instructions only\n\n## Bug Fixes\n- Fixed context overflow risk on long conversations by implementing token budgets",
-  "pub_date": "2026-03-31T23:55:00Z",
+  "notes": "## Bug Fixes\n- **Ollama context length errors**: Implemented token-aware batching system for embeddings with configurable batch size, max tokens, and partition support for distributed processing\n- **OmniSearch clickability**: Search results are now fully clickable with explicit Edit button for direct snippet editing",
+  "pub_date": "2026-03-31T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3NaNWIwempDcGxzYTRzZ0RtM2hOcGRZUG1XK21hZ01rb1ZDVDJ6Wm5TZStVTjMxMGRqcXV5Q25DSlZSRHBTVmcvT29nVUdlcGFTcFlkdTVhbjVhZFFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTc0MTg5CWZpbGU6QmVlZlRleHQgQUlfMC4yLjRfeDY0LXNldHVwLmV4ZQo3NG9ZeSs4VXZSU3BOVEpmV0dsVm1LbnBmbE1xcDh1MUo4NGxoNHJpM3FGMVB0M1VEbDBSWjc1RklMc2N3T3JuQ2VvTEk3QVNsS2F2ZUkra2lzbGhBdz09Cg==",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL2kvL29jSk1nb0plWld2RFEzWGt5dFFSbklkV2tjTkdQLzY0eThkei9QMVQzMzZBWThwN2FYdGFkVkxDbldrUDZhUjdQaE5xVSt3aG9XQWxTN0lmMWdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTc1ODAxCWZpbGU6QmVlZlRleHQgQUlfMC4yLjRfeDY0LXNldHVwLmV4ZQpSN3JuMXVtaFdCZnJtdzF3VlFrWWpwRmdHL3FvY2VjVDEvQWJyYmNXZkZmamZVMm83OWFOTXBabWkwK2hRYVhPbFBUODMrYU5POXdROTZYdlNVb3ZCUT09Cg==",
       "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.4/BeefText.AI_0.2.4_x64-setup.exe"
     }
   }
