@@ -1,11 +1,11 @@
 {
-  "version": "0.2.1",
-  "notes": "## What's New\n- **Group deletion modes**: When deleting a group, choose between deleting only the group (keeping snippets) or deleting the group along with all its snippets.\n\n## Bug Fixes\n- Resolved snippet trigger detection issues",
-  "pub_date": "2026-03-31T21:45:00Z",
+  "version": "0.2.2",
+  "notes": "## Bug Fixes\n- **Fixed delete_group_cmd argument mismatch**: The `deleteSnippets` parameter was not properly mapped from frontend to backend, causing `invalid args` errors when trying to delete groups.",
+  "pub_date": "2026-03-31T22:15:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3BlSGRCUFpaZVZtM0tBWUlNMTBRa2pSZFFkL0R4dXZHR0QrSnBZVUU2OGRDSzJSREIzdG82RU01WGZYNXV5NjhDeFVRSXcyU1pkYTVQbUtBSnA5cWdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTY4NDU0CWZpbGU6QmVlZlRleHQgQUlfMC4yLjFfeDY0LXNldHVwLmV4ZQpiV3ZDOXNGVCtiT2JDT3Z6ZHlYc1BrdW5FNlZLTERjZHdNY0JRazJuLzBHTXhITGs3eGlXaUJWMUZjaE52TUluMk9FRmx2RmlQQkJ6Q2I3Z2RGMUVDdz09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.1/BeefText.AI_0.2.1_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL24yWUV0NytNZVl2RXFKNnRPejNaYXFIREFvZS9vZTg5NTJpSzI2dGtSeXk5ZVBzQjdUampoVURMRkRLMjk0QWhaL215VGNld0s3M0lIQ1d0dkVIRlEwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTY5ODg4CWZpbGU6QmVlZlRleHQgQUlfMC4yLjJfeDY0LXNldHVwLmV4ZQpxTnNPYTdhLzBIamYxUEl3bk5sUkh0S0hKZVVEaSs5SzBZYWJTSjI3SnVrRXdaZE1xZUZIZUhUOEVyWktkaWhEVzJ3VnhoKzdhVUxNbXM0UXhDUUJBdz09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.2/BeefText.AI_0.2.2_x64-setup.exe"
     }
   }
 }
