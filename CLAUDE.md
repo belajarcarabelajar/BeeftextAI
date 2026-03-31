@@ -3,7 +3,7 @@
 ## 1. Preparation
 
 Increase version in both `package.json` and `src-tauri/tauri.conf.json`.
-The current latest release version is **0.1.5**.
+The current latest release version is **0.1.6**.
 
 ## 2. Generate Release Build
 
@@ -37,6 +37,8 @@ After release:
 3. Commit and push the changes to GitHub.
 
 ---
+
 **Note:** The updater uses the public key configured in `src-tauri/tauri.conf.json`:
-`RWSEddPtkftarqgTOr4OSvf5jg/OV2zqaAqsoyXuSYVNsFGgSr8UOZ37`
-The corresponding private key is stored in `src-tauri/main.key.raw`.
+`dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZFNzVBNzY2NkJBQjBFM0QKUldROURxdHJacWQxL25NQXV5MC94ZnF2Wmc5WGJoSWlNc0d4dDZXVTJ4RmpNUSt0QWRLVUNIOWcK`
+
+The corresponding private key is stored in `src-tauri/main.key.raw` (password: `790602`).
