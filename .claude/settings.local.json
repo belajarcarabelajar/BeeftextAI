@@ -54,7 +54,15 @@
       "Bash(echo \"Exit: $?\")",
       "Bash(tasklist)",
       "Bash(git checkout:*)",
-      "Bash(powershell -Command \"Get-Process | Where-Object { $_.Path -like ''*BeeftextAI*'' } | Select-Object Name,Id\")"
+      "Bash(powershell -Command \"Get-Process | Where-Object { $_.Path -like ''*BeeftextAI*'' } | Select-Object Name,Id\")",
+      "Bash(.gitignore:*)",
+      "Bash(git status:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(cd /c/Users/Tedi Rahmat/BeeftextAI/apps/desktop/src-tauri)",
+      "Bash(cd /c/Users/Tedi Rahmat/BeeftextAI)",
+      "Bash(npx tsc:*)",
+      "Bash(node -e \"const p=require\\(''''./package.json''''\\);console.log\\(p.version\\)\")",
+      "Bash(cd C:/Users/Tedi Rahmat/BeeftextAI)"
     ]
   }
 }
