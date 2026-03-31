@@ -23,6 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 
+# Logs
+logs/
+temp/
+
 # Sensitive directories
 archive/
 secrets/
+*.key
+*.bin
