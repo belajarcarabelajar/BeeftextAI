@@ -1,11 +1,11 @@
 {
-  "version": "0.1.6",
-  "notes": "🚀 Beeftext AI v0.1.6\n\nChanges:\n- Fix CLAUDE.md Markdown linting errors\n- Add createUpdaterArtifacts support\n- Refresh signing keypair",
-  "pub_date": "2026-03-31T10:46:00Z",
+  "version": "0.2.0",
+  "notes": "🚀 Beeftext AI v0.2.0\n\nFeatures:\n- Version bump to 0.2.0\n- Clean build with correct updater signatures\n- Updated release process as per CLAUDE.md",
+  "pub_date": "2026-03-31T12:07:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL2lqdE5yTWtoRlhKNnN4eTFjRFpScXM0bEpkR01TVGJsRVJ5YlZvTHJIM1BBMXZwV2J0VnBYMU9CSzZxcnNUU0piT1dESHBmak40Q255enQ0TTVtL1FNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTUzOTc5CWZpbGU6QmVlZlRleHQgQUlfMC4xLjZfeDY0LXNldHVwLmV4ZQpkMDROUzQ4bmlEZDBoQ3BLbTJZUlZXejlrQWU0OCtWc1htVVpjZldhSXkrWFpQMlVMV0dxaXMxZjFNc2xISm1SaVZJNEdmQXczU2NzaElQWTV5RmFEdz09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.1.6/BeefText.AI_0.1.6_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3F4enBTWEN0NU1aV0NXNjE4Tzg3K2xlN1BtVERQdFBhMXE2ZEpPMnBHaDRjSHAxdjVNU0psSUZRR00xOWh4L3g5VUJvQ1dpTmhsNWg5MTc0Mm54NHdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0OTU4NzQ0CWZpbGU6QmVlZlRleHQgQUlfMC4yLjBfeDY0LXNldHVwLmV4ZQpOYk5XVmIxeTV6cEV5UVhQRFc5NURlbHdvM1A0d0RkNEhLZ1Nod01VSkVoM2pRejVsb2tEQ2xNUnA2ZVFFQmxSRFJNbUxHRE1VM3pKaldFR1dYSUlDQT09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.0/BeefText.AI_0.2.0_x64-setup.exe"
     }
   }
 }
