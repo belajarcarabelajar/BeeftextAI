@@ -45,14 +45,14 @@ gh release create v0.2.0 `
 ## 5. Maintenance (latest.json and Github Upload)
 
 1. Read the exact `.sig` string directly from the file (e.g., using `cat` or opening in VSCode to copy).
-2. Update `latest.json` in the project root. **CRITICAL:** Ensure the `url` explicitly matches the remote GitHub asset name (with dots if GitHub renamed it, e.g. `BeefText.AI_0.2.0_x64-setup.exe`), **NOT** `.zip`.
-3. Overwrite `latest.json` on the GitHub release:
+1. Update `latest.json` in the project root. **CRITICAL:** Ensure the `url` explicitly matches the remote GitHub asset name (with dots if GitHub renamed it, e.g. `BeefText.AI_0.2.0_x64-setup.exe`), **NOT** `.zip`.
+1. Overwrite `latest.json` on the GitHub release:
 
-```powershell
-gh release upload v0.2.0 latest.json --clobber
-```
+   ```powershell
+   gh release upload v0.2.0 latest.json --clobber
+   ```
 
-4. Commit and push `latest.json` to the `<master>` branch.
+1. Commit and push `latest.json` to the `<master>` branch.
 
 ---
 
