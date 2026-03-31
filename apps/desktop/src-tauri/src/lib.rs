@@ -126,8 +126,8 @@ async fn update_group_cmd(g: Group) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn delete_group_cmd(uuid: String, delete_snippets: bool) -> Result<(), String> {
-    store::delete_group(&uuid, delete_snippets)
+async fn delete_group_cmd(uuid: String, #[allow(non_snake_case)] deleteSnippets: bool) -> Result<(), String> {
+    store::delete_group(&uuid, deleteSnippets)
 }
 
 #[tauri::command]

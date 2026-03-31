@@ -197,7 +197,7 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
       `Press Cancel: Delete group only, keeping all snippets.`
     );
     try {
-      await invoke("delete_group_cmd", { uuid, delete_snippets: mode });
+      await invoke("delete_group_cmd", { uuid, deleteSnippets: mode });
       setSelectedGroup(null);
       showToast(mode ? "Group and snippets deleted" : "Group deleted, snippets kept");
       load();
