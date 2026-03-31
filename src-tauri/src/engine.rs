@@ -32,7 +32,7 @@ pub async fn check_and_substitute(typed_buffer: &str, ollama: &OllamaClient, kb:
 }
 
 /// Perform the text substitution
-async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
+pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
     // 1. Evaluate all variables in the snippet text
     let expanded = variable::evaluate_variables(&snippet.snippet, ollama).await;
 

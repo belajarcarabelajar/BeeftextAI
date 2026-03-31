@@ -132,7 +132,7 @@ pub fn ensure_worker_running() {
                         last_trigger_time = None;
                         // Process on a separate thread so worker stays responsive
                         let ollama = get_ollama_for_worker();
-                        let kb = Arc::clone(&KEYBOARD_WORKER);
+                        let kb = Arc::clone(KEYBOARD_WORKER.get().unwrap());
                         thread::spawn(move || {
                             let rt = tokio::runtime::Builder::new_current_thread()
                                 .enable_all()
@@ -177,10 +177,11 @@ pub fn set_keyboard_state(kb: Arc<crate::keyboard::KeyboardState>) {
 /// Enqueue a buffer for trigger checking (debounced)
 pub fn enqueue_trigger(buffer: String) {
     let ollama = get_ollama_for_worker();
-    let kb = Arc::clone(KEYBOARD_WORKER.get().unwrap_or_else(|| {
-        // Fallback: create a dummy Arc
+    let kb = if let Some(kb) = KEYBOARD_WORKER.get() {
+        Arc::clone(kb)
+    } else {
         Arc::new(crate::keyboard::KeyboardState::new())
-    }));
+    };
 
     if let Some(sender) = WORKER_STATE.sender.lock().as_ref() {
         let job = TriggerJob {
@@ -189,7 +190,7 @@ pub fn enqueue_trigger(buffer: String) {
             kb,
         };
         // Non-blocking send — if worker is overwhelmed, drop the job
-        let _ = sender.try_send(job);
+        let _ = sender.send(job);
     }
 }
 
