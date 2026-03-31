@@ -136,7 +136,7 @@ export default function App() {
         {page === "snippets" && <SnippetsPage showToast={showToast} />}
         {page === "chat" && <ChatPage showToast={showToast} ollamaOnline={ollamaOnline} />}
         {page === "search" && <SearchPage showToast={showToast} ollamaOnline={ollamaOnline} />}
-        {page === "settings" && <SettingsPage showToast={showToast} ollamaOnline={ollamaOnline} />}
+        {page === "settings" && <SettingsPage showToast={showToast} ollamaOnline={ollamaOnline} onLanguageChange={setLang} />}
       </main>
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
@@ -300,7 +300,7 @@ function SnippetsPage({ showToast }: { showToast: (m: string, t?: "success" | "e
                 <div className="group-actions">
                   <button className="group-action-btn" onClick={(e) => { e.stopPropagation(); setEditingGroup(g); setShowGroupForm(true); }} title="Edit">✏️</button>
                   <button className="group-action-btn" onClick={(e) => { e.stopPropagation(); handleDeleteGroupSnippets(g.uuid); }} title="Delete All Snippets">🗑️</button>
-                  <button className="group-action-btn" onClick={(e) => { e.stopPropagation(); handleDeleteGroup(g.uuid); }} title="Delete">✕</button>
+                  <button className="group-action-btn" onClick={(e) => { e.stopPropagation(); handleDeleteGroup(g.uuid); }} title="Delete"><span className="btn-delete-icon">×</span></button>
                 </div>
               </div>
             ))}
@@ -922,7 +922,7 @@ function SearchPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "s
 // Settings Page
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "success" | "error") => void; ollamaOnline: boolean }) {
+function SettingsPage({ showToast, ollamaOnline, onLanguageChange }: { showToast: (m: string, t?: "success" | "error") => void; ollamaOnline: boolean; onLanguageChange: (lang: Language) => void }) {
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
   const [textModel, setTextModel] = useState("nemotron-3-super:cloud");
   const [embedModel, setEmbedModel] = useState("nomic-embed-text");
@@ -1007,11 +1007,16 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
     setEmbedProgress(null);
     showToast(resume ? "Resuming embedding process..." : "Starting fresh embedding process...");
     try {
-      const count = await invoke<number>("force_re_embed_all", { resume });
-      showToast(`✅ Success! ${count} snippets processed.`);
+      const result = await invoke<{ successful: number; failed: number; failures: { uuid: string; name: string; reason: string }[] }>("force_re_embed_all", { resume });
+      if (result.failed > 0) {
+        const failureList = result.failures.map(f => `${f.name}: ${f.reason}`).join("\n");
+        showToast(`⚠️ ${result.successful} embedded, ${result.failed} failed.\n\n${failureList}`, "warning", 10000);
+      } else {
+        showToast(`✅ Success! ${result.successful} snippets embedded.`);
+      }
       loadData();
     } catch (e) { showToast(String(e), "error"); }
-    finally { 
+    finally {
       setRebedding(false);
       setTimeout(() => setEmbedProgress(null), 3000);
     }
@@ -1141,7 +1146,7 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
           <h3>🌐 Language / Bahasa</h3>
           <div className="settings-row">
             <label>Interface Language</label>
-            <select className="input" value={language} onChange={e => setLanguage(e.target.value)} style={{ maxWidth: 300 }}>
+            <select className="input" value={language} onChange={e => { const v = e.target.value as Language; setLanguage(v); onLanguageChange(v); invoke("set_preference", { key: "language", value: v }); }} style={{ maxWidth: 300 }}>
               <option value="en">English</option>
               <option value="id">Bahasa Indonesia</option>
               <option value="both">Both / Keduanya</option>
