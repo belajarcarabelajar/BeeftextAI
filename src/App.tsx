@@ -98,7 +98,7 @@ export default function App() {
             <div className="sidebar-logo-icon">⚡</div>
             <div>
               <div className="sidebar-logo-text">BeefText AI</div>
-              <div className="sidebar-logo-version">v0.1.1</div>
+              <div className="sidebar-logo-version">v0.1.2</div>
             </div>
           </div>
         </div>
@@ -1113,7 +1113,7 @@ function SettingsPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: 
 
         <div className="settings-section">
           <h3>ℹ️ About</h3>
-          <div className="settings-row"><label>Version</label><span style={{ color: "var(--text-secondary)" }}>BeefText AI v0.1.1</span></div>
+          <div className="settings-row"><label>Version</label><span style={{ color: "var(--text-secondary)" }}>BeefText AI v0.1.2</span></div>
           <div className="settings-row"><label>License</label><span style={{ color: "var(--text-secondary)" }}>MIT License</span></div>
           <div className="settings-row"><label>Inspired by</label><span style={{ color: "var(--text-secondary)" }}>Beeftext by Xavier Michelon</span></div>
         </div>
