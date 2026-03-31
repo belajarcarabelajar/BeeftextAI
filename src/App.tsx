@@ -1009,8 +1009,12 @@ function SettingsPage({ showToast, ollamaOnline, onLanguageChange }: { showToast
     try {
       const result = await invoke<{ successful: number; failed: number; failures: { uuid: string; name: string; reason: string }[] }>("force_re_embed_all", { resume });
       if (result.failed > 0) {
-        const failureList = result.failures.map(f => `${f.name}: ${f.reason}`).join("\n");
-        showToast(`⚠️ ${result.successful} embedded, ${result.failed} failed.\n\n${failureList}`, "warning", 10000);
+        // Truncate long failure lists, show first 5 with count of remaining
+        const displayFailures = result.failures.slice(0, 5);
+        const remaining = result.failures.length - displayFailures.length;
+        const failureList = displayFailures.map(f => `• ${f.name}: ${f.reason}`).join("\n");
+        const suffix = remaining > 0 ? `\n\n...and ${remaining} more (check console)` : "";
+        showToast(`⚠️ ${result.successful} embedded, ${result.failed} failed:\n\n${failureList}${suffix}`, "warning", 15000);
       } else {
         showToast(`✅ Success! ${result.successful} snippets embedded.`);
       }
