@@ -5,7 +5,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
 import { save, open } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { writeTextFile, readFile } from "@tauri-apps/plugin-fs";
 import { useTranslation, Language } from "./i18n";
 import { getPreferredTheme, setTheme, toggleTheme, getStoredTheme, initTheme, Theme } from "./theme";
 
@@ -865,43 +865,33 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Global drag-drop overlay for external files (Windows Explorer drag)
+  // Tauri-native drag-drop handler for external files (Windows Explorer drag)
   useEffect(() => {
-    const handleDocDragOver = (e: DragEvent) => {
-      e.preventDefault();
-      if (e.dataTransfer?.types.includes("Files")) {
-        if (ollamaOnline && !loading) setIsDragging(true);
-      }
-    };
-    const handleDocDrop = (e: DragEvent) => {
-      e.preventDefault();
+    let unlisten: (() => void) | undefined;
+
+    listen<{ paths: string[] }>("tauri://drag-drop", async (event) => {
       setIsDragging(false);
       if (!ollamaOnline || loading) return;
-      const files = e.dataTransfer?.files;
-      if (files && files.length > 0) {
-        const file = files[0];
-        if (file.type.startsWith("image/")) {
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            const result = ev.target?.result as string;
-            setImageData(result);
-            setImagePreview(result);
-          };
-          reader.readAsDataURL(file);
-        }
+      const paths = event.payload.paths;
+      if (!paths || paths.length === 0) return;
+
+      const filePath = paths[0];
+      if (!filePath.match(/\.(png|jpe?g|gif|bmp|webp|svg)$/i)) return;
+
+      try {
+        const contents = await readFile(filePath);
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(contents)));
+        const ext = filePath.split('.').pop()?.toLowerCase() || 'png';
+        const mimeType = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+        setImageData(dataUrl);
+        setImagePreview(dataUrl);
+      } catch (err) {
+        console.error("[ChatPage] Failed to read dropped file:", err);
       }
-    };
-    const handleDocDragLeave = (e: DragEvent) => {
-      if (e.relatedTarget === null) setIsDragging(false);
-    };
-    document.addEventListener("dragover", handleDocDragOver);
-    document.addEventListener("drop", handleDocDrop);
-    document.addEventListener("dragleave", handleDocDragLeave);
-    return () => {
-      document.removeEventListener("dragover", handleDocDragOver);
-      document.removeEventListener("drop", handleDocDrop);
-      document.removeEventListener("dragleave", handleDocDragLeave);
-    };
+    }).then(fn => { unlisten = fn; });
+
+    return () => { unlisten?.(); };
   }, [ollamaOnline, loading]);
 
   useEffect(() => {
@@ -970,11 +960,6 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (!ollamaOnline || loading) return;
-    const files = e.dataTransfer?.files;
-    if (files && files.length > 0) {
-      processImageFile(files[0]);
-    }
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
