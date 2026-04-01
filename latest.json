@@ -1,10 +1,10 @@
 {
   "version": "0.3.1",
-  "notes": "## What's New\n- **AI Chat Drag & Drop Fix**: Images dragged from Windows Explorer into AI Chat now properly show preview and can be sent to the AI.\n- **Plugin Opener Update**: Improved reliability of opening external links and exported files.\n- **Stability Improvements**: Resolved several lint errors and optimized base64 image handling.",
-  "pub_date": "2026-04-01T19:40:00Z",
+  "notes": "## What's New\n- **AI Chat Drag & Drop Fix**: Images dragged from Windows Explorer into AI Chat now properly show preview and can be sent to the AI.\n- **Plugin Opener Update**: Improved reliability of opening external links and exported files.\n- **Stability Improvements**: Resolved several lint errors and optimized base64 image handling.\n- **Auto-Updater Fix**: Filename schema updated to ensure reliable signature verification.",
+  "pub_date": "2026-04-01T20:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL215WWVwT2J1OTlGL0Z3Ty9lcUdLSHhUTVpxUkpyVlM1OE9DODJnRVZnRnBjNFJndU5oNkljeUFFSXBhcEJKMU13aGREK0lnMVZheVp3QXNHVGhMYlEwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MDQ3MjcwCWZpbGU6QmVlZlRleHQgQUlfMC4zLjFfeDY0LXNldHVwLmV4ZQp1uzI4Wmtqa2VPc09hTWJMaHFMOG1Ybi9iaGZvb1dtMGkreGwzNDgwUW9RVStXV0RabC9qU0tLYjlWbjhtVHNLODBuYXNlZXZ5TmR2V1NpRDdPRG1EZz09Cg==",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3U3eU5HbWkrazd6MnIxQXBVZ3hlekdwUDJ0VDd4NjlwWFRObHIzd3k2Ym9lN0R1Ym0zOXRZMFhrNE93QUM0L1BaRTZFcFFhbm54TXdPUGNoMnk0eGc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MDQ4Mzk2CWZpbGU6QmVlZlRleHQuQUlfMC4zLjFfeDY0LXNldHVwLmV4ZQoxM2p4aU5CUWd5eFRqRzVwM3RyWFRBdzFTZDFTWWVqRFU2RVRybitmb2VjaXZUaDBoTDdsclJYUk5sUTdrOXE5b3o5NGNyNlBvMlloY0l5K3Fuby9CZz09Cg==",
       "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.3.1/BeefText.AI_0.3.1_x64-setup.exe"
     }
   }
