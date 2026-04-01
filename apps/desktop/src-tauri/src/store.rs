@@ -10,7 +10,7 @@ static DB: Lazy<Mutex<Option<Connection>>> = Lazy::new(|| Mutex::new(None));
 /// Initialize the SQLite database
 pub fn init_db(db_path: &str) -> Result<(), String> {
     let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
-    
+
     conn.execute_batch("
         CREATE TABLE IF NOT EXISTS groups (
             uuid TEXT PRIMARY KEY,
@@ -53,6 +53,27 @@ pub fn init_db(db_path: &str) -> Result<(), String> {
             created_at TEXT NOT NULL
         );
     ").map_err(|e| e.to_string())?;
+
+    // Migration: add image_data and content_type columns to existing snippets table
+    let has_image_data: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('snippets') WHERE name='image_data'",
+        [],
+        |row| row.get(0)
+    ).unwrap_or(false);
+    if !has_image_data {
+        conn.execute("ALTER TABLE snippets ADD COLUMN image_data TEXT", [])
+            .map_err(|e| e.to_string())?;
+    }
+
+    let has_content_type: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('snippets') WHERE name='content_type'",
+        [],
+        |row| row.get(0)
+    ).unwrap_or(false);
+    if !has_content_type {
+        conn.execute("ALTER TABLE snippets ADD COLUMN content_type TEXT DEFAULT 'Text'", [])
+            .map_err(|e| e.to_string())?;
+    }
 
     *DB.lock().unwrap() = Some(conn);
     Ok(())
