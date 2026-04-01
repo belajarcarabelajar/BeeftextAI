@@ -71,8 +71,15 @@ pub fn inject_text(text: &str) {
 }
 
 pub fn inject_image(base64_data: &str) {
+    // Strip "data:image/...;base64," prefix if present (from FileReader.readAsDataURL)
+    let actual_b64 = if let Some(pos) = base64_data.rfind(',') {
+        &base64_data[pos + 1..]
+    } else {
+        base64_data
+    };
+
     // Decode base64 to raw bytes
-    let image_bytes = match base64::Engine::decode(&base64::engine::general_purpose::STANDARD, base64_data) {
+    let image_bytes = match base64::Engine::decode(&base64::engine::general_purpose::STANDARD, actual_b64) {
         Ok(bytes) => bytes,
         Err(e) => {
             eprintln!("Failed to decode base64 image: {}", e);
