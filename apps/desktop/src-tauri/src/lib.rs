@@ -41,8 +41,10 @@ const SYSTEM_PROMPT: &str = r#"You are an AI assistant for BeefText AI, a smart 
 
 ### Snippet Creation
 When the user wants to create/save a snippet, respond with:
-{"keyword": "!abc", "snippet": "text", "name": "Name", "description": "Desc", "group": "GroupName"}
+{"keyword": "!abc", "snippet": "text", "name": "Name", "description": "Desc", "group": "GroupName", "content_type": "Text|Image|Both", "image_data": "base64_or_null"}
 Always auto-generate a name, description, and assign a logical group.
+For image snippets: set content_type to "Image" or "Both" and include the image_data field (the user already uploaded the image).
+For text snippets: set content_type to "Text" and omit image_data.
 
 ### Keyword Rules
 - Must start with ONE special symbol + exactly 3 letters (e.g., @eml, #sig, !add, %tyx, &brd)
@@ -177,7 +179,7 @@ async fn ollama_models() -> Result<Vec<ollama::OllamaModel>, String> {
 }
 
 #[tauri::command]
-async fn chat_with_ai(message: String) -> Result<String, String> {
+async fn chat_with_ai(message: String, image_data: Option<String>) -> Result<String, String> {
     use token::{estimate_tokens, truncate_to_tokens, log_stats};
 
     // Truncate current message to 2000 tokens
@@ -223,7 +225,7 @@ async fn chat_with_ai(message: String) -> Result<String, String> {
     let history_budget = max_context.saturating_sub(system_tokens).saturating_sub(response_budget);
 
     // Build message list with token-aware history trimming
-    let mut messages = vec![ChatMessage { role: "system".to_string(), content: system }];
+    let mut messages = vec![ChatMessage { role: "system".to_string(), content: system, images: None }];
 
     // Add history from newest to oldest, staying within budget
     let mut history_tokens_used = 0;
@@ -233,7 +235,7 @@ async fn chat_with_ai(message: String) -> Result<String, String> {
             break;
         }
         history_tokens_used += msg_tokens;
-        messages.push(ChatMessage { role: role.clone(), content: content.clone() });
+        messages.push(ChatMessage { role: role.clone(), content: content.clone(), images: None });
     }
 
     // Reverse to get chronological order (oldest first, newest last)
@@ -243,7 +245,7 @@ async fn chat_with_ai(message: String) -> Result<String, String> {
     messages.reverse();
     messages.insert(0, sys_msg);
 
-    messages.push(ChatMessage { role: "user".to_string(), content: message_truncated });
+    messages.push(ChatMessage { role: "user".to_string(), content: message_truncated, images: None });
 
     let total_tokens: usize = messages.iter().map(|m| estimate_tokens(&m.content) + 10).sum();
     eprintln!("[TOKEN] total request | tokens: ~{} | messages: {}", total_tokens, messages.len());
