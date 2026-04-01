@@ -13,10 +13,16 @@ pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
     use crate::snippet::ContentType;
 
     // Evaluate variables only if there's text content
-    let expanded = if !snippet.snippet.is_empty() {
-        variable::evaluate_variables(&snippet.snippet, ollama).await
+    let (expanded, cursor_offset, delays) = if !snippet.snippet.is_empty() {
+        match variable::evaluate_variables(&snippet.snippet, ollama).await {
+            Ok(result) => (result.text, result.cursor_offset, result.delays),
+            Err(e) => {
+                eprintln!("Variable evaluation error: {}", e);
+                (snippet.snippet.clone(), None, Vec::new())
+            }
+        }
     } else {
-        String::new()
+        (String::new(), None, Vec::new())
     };
 
     // Erase the trigger keyword (backspace simulation)
@@ -25,7 +31,11 @@ pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
     // Inject content based on type
     match snippet.content_type {
         ContentType::Text => {
-            clipboard::inject_text(&expanded);
+            if let Some(offset) = cursor_offset {
+                clipboard::inject_text_with_cursor(&expanded, offset);
+            } else {
+                clipboard::inject_text(&expanded);
+            }
         }
         ContentType::Image => {
             if let Some(ref b64) = snippet.image_data {
@@ -35,13 +45,22 @@ pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
         ContentType::Both => {
             // Inject text first, then image after delay
             if !expanded.is_empty() {
-                clipboard::inject_text(&expanded);
+                if let Some(offset) = cursor_offset {
+                    clipboard::inject_text_with_cursor(&expanded, offset);
+                } else {
+                    clipboard::inject_text(&expanded);
+                }
             }
             if let Some(ref b64) = snippet.image_data {
                 std::thread::sleep(std::time::Duration::from_millis(150));
                 clipboard::inject_image(b64);
             }
         }
+    }
+
+    // Execute #{delay:} pauses after injection
+    for delay_ms in delays {
+        std::thread::sleep(std::time::Duration::from_millis(delay_ms));
     }
 
     // Update last_used_at
