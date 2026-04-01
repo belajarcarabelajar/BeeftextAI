@@ -52,6 +52,8 @@ struct ModelsResponse {
 pub struct ChatMessage {
     pub role: String,
     pub content: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub images: Option<Vec<String>>,
 }
 
 #[derive(Serialize)]

@@ -4,8 +4,9 @@ import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
-import { save, open } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { save, open as openPicker } from "@tauri-apps/plugin-dialog";
+import { openPath } from "@tauri-apps/plugin-opener";
+import { writeTextFile, readFile } from "@tauri-apps/plugin-fs";
 import { useTranslation, Language } from "./i18n";
 import { getPreferredTheme, setTheme, toggleTheme, getStoredTheme, initTheme, Theme } from "./theme";
 
@@ -302,7 +303,7 @@ function SnippetsPage({ showToast, showForm, setShowForm, editingSnippet, setEdi
       if (!path) return;
       const html = await invoke<string>("generate_cheat_sheet");
       await writeTextFile(path, html);
-      await open(path);
+      await openPath(path);
       showToast(`Saved to ${path}`);
     } catch (e) { showToast(String(e), "error"); }
   };
@@ -894,6 +895,33 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
     const handleDocDragLeave = (e: DragEvent) => {
       if (e.relatedTarget === null) setIsDragging(false);
     };
+
+    // Native Tauri v2 drag-drop listener (reliable for OS-level drops)
+    const unlisten = listen<{ paths: string[] }>("tauri://drag-drop", async (event) => {
+      setIsDragging(false);
+      if (!ollamaOnline || loading) return;
+      const paths = event.payload.paths;
+      if (paths && paths.length > 0) {
+        const path = paths[0];
+        const lower = path.toLowerCase();
+        if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".webp")) {
+          try {
+            const content = await readFile(path);
+            const ext = path.split('.').pop()?.toLowerCase() || 'png';
+            const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
+            const blob = new Blob([content], { type: mime });
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              const result = ev.target?.result as string;
+              setImageData(result);
+              setImagePreview(result);
+            };
+            reader.readAsDataURL(blob);
+          } catch (e) { console.error("Error reading dropped file:", e); }
+        }
+      }
+    });
+
     document.addEventListener("dragover", handleDocDragOver);
     document.addEventListener("drop", handleDocDrop);
     document.addEventListener("dragleave", handleDocDragLeave);
@@ -901,6 +929,7 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
       document.removeEventListener("dragover", handleDocDragOver);
       document.removeEventListener("drop", handleDocDrop);
       document.removeEventListener("dragleave", handleDocDragLeave);
+      unlisten.then(f => f());
     };
   }, [ollamaOnline, loading]);
 
@@ -940,17 +969,6 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
     return () => chatEl?.removeEventListener("paste", handlePaste);
   }, [ollamaOnline, loading]);
 
-  const processImageFile = (file: File) => {
-    if (!file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
-      setImageData(result);
-      setImagePreview(result);
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     if (ollamaOnline && !loading) setIsDragging(true);
@@ -958,18 +976,26 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    // Only set isDragging false if we're leaving the container entirely
-    // (not just moving between child elements like .chat-messages or .chat-input-container)
-    const rect = e.currentTarget.getBoundingClientRect();
-    const { clientX, clientY } = e;
-    if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
-      setIsDragging(false);
-    }
+    setIsDragging(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    if (!ollamaOnline || loading) return;
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const result = ev.target?.result as string;
+          setImageData(result);
+          setImagePreview(result);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1361,7 +1387,7 @@ function SettingsPage({ showToast, ollamaOnline, onLanguageChange }: { showToast
         const remaining = result.failures.length - displayFailures.length;
         const failureList = displayFailures.map(f => `• ${f.name}: ${f.reason}`).join("\n");
         const suffix = remaining > 0 ? `\n\n...and ${remaining} more (check console)` : "";
-        showToast(`⚠️ ${result.successful} embedded, ${result.failed} failed:\n\n${failureList}${suffix}`, "warning", 15000);
+        showToast(`⚠️ ${result.successful} embedded, ${result.failed} failed. Check console for details.`, "error");
       } else {
         showToast(`✅ Success! ${result.successful} snippets embedded.`);
       }
