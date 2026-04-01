@@ -9,6 +9,21 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script>
+      // Prevent flash of wrong theme by blocking paint until theme is set
+      (function() {
+        var stored = localStorage.getItem('beeftext-theme');
+        var theme = stored === 'light' ? 'light' : 'dark';
+        if (!stored) {
+          try {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+              theme = 'light';
+            }
+          } catch (e) { /* ignore */ }
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
