@@ -45,9 +45,6 @@
         "https://github.com/belajarcarabelajar/BeeftextAI/releases/latest/download/latest.json"
       ]
     },
-    "process": {},
-    "fs": {
-      "scope": ["**"]
-    }
+    "process": {}
   }
 }
