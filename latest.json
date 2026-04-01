@@ -1,11 +1,11 @@
 {
-  "version": "0.2.7",
-  "notes": "## Bug Fix\n- **Database Migration Fix**: Existing users with v0.2.6 will automatically get the new `image_data` and `content_type` columns added to their SQLite database on startup. No data loss.\n\n## Previous (v0.2.6)\n- **Image Snippet Support**: Snippets can now store images alongside text. Choose content type: Text only, Image only, or Both (text + image pasted sequentially).\n- **Content Type Toggle**: In snippet form, select between Text, Image, or Both modes.\n- **Image Upload**: Upload any image format (PNG, JPEG, GIF, BMP, WEBP) via file picker.\n- **Sequential Paste**: For Both type, text is pasted first via Ctrl+V, followed by ~150ms delay, then image paste. Works with Telegram, WhatsApp, and other apps.\n- **Base64 Storage**: Images are base64-encoded before storing in SQLite database.",
-  "pub_date": "2026-04-01T14:00:00Z",
+  "version": "0.2.8",
+  "notes": "## Bug Fix\n- **Image Data URL Prefix Strip**: Fixed a critical bug where image snippets weren't pasting because `inject_image()` tried to base64-decode the full data URL string (`data:image/png;base64,...`) instead of just the base64 portion. Images now paste correctly in Telegram, WhatsApp, and other apps.\n\n## Previous\n- v0.2.7: Database migration fix for existing users\n- v0.2.6: Image snippet support (Text/Image/Both content types)",
+  "pub_date": "2026-04-01T14:30:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL212dVdxZmkxRDB0WHJzSjkxUWIzdG9KamF2ZkJyWmhlL2VNVkxCVitkbzJNeFFSK21xaXQrdEs5ZStFSnhXc2pLU1FFdzlmb2dxY1Q0bTNuM0F4eWdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MDI2NTUwCWZpbGU6QmVlZlRleHQgQUlfMC4yLjdfeDY0LXNldHVwLmV4ZQpnZERta00zZ1ErNjVEOVBlckI4ekw4b294VnlMaHFCYlI4SkxOV1RWZTVITEtTM1YxQW5aQ3VwdDdoVnVCdW9tcU14Nm1uMWhnWTNWTi93MEVZMU1Bdz09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.7/BeefText.AI_0.2.7_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3JJYjFRdkhzRHQ0MGl5SkNMQVhudTZqdW8yc0dRZGRETjYwai9GU3g1Zm1VSHlDZDc3Y1hSZXkyM2ZQaWNEc25uMktCT0pHcnMrUytpUWIzTlJhWEE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MDI3MzE0CWZpbGU6QmVlZlRleHQgQUlfMC4yLjhfeDY0LXNldHVwLmV4ZQp0TGl5emFsRzRhSkN1K25kQ0dEbzVEQmVFeHd4WjJ6T2RwSytGblZlZVRMdVBXVjUyOHZJOXR6a2VNaWZXOVoyaVhBQWtPNVMxbnBUS1NpdllpYjVBUT09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.8/BeefText.AI_0.2.8_x64-setup.exe"
     }
   }
 }
