@@ -36,6 +36,8 @@ pub fn init_db(db_path: &str) -> Result<(), String> {
             last_used_at TEXT,
             ai_generated INTEGER DEFAULT 0,
             embedding BLOB,
+            image_data TEXT,
+            content_type TEXT DEFAULT 'Text',
             FOREIGN KEY (group_id) REFERENCES groups(uuid)
         );
 
@@ -62,14 +64,16 @@ pub fn get_all_snippets() -> Result<Vec<Snippet>, String> {
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     
     let mut stmt = conn.prepare(
-        "SELECT uuid, name, keyword, snippet, description, matching_mode, case_sensitivity, 
-                group_id, enabled, created_at, modified_at, last_used_at, ai_generated 
+        "SELECT uuid, name, keyword, snippet, description, matching_mode, case_sensitivity,
+                group_id, enabled, created_at, modified_at, last_used_at, ai_generated,
+                image_data, content_type
          FROM snippets ORDER BY modified_at DESC"
     ).map_err(|e| e.to_string())?;
 
     let results = stmt.query_map([], |row| {
         let mm_str: String = row.get(5)?;
         let cs_str: String = row.get(6)?;
+        let ct_str: String = row.get(14)?;
         Ok(Snippet {
             uuid: row.get(0)?,
             name: row.get(1)?,
@@ -84,6 +88,12 @@ pub fn get_all_snippets() -> Result<Vec<Snippet>, String> {
             modified_at: row.get(10)?,
             last_used_at: row.get(11)?,
             ai_generated: row.get::<_, i32>(12)? != 0,
+            image_data: row.get(13)?,
+            content_type: match ct_str.as_str() {
+                "Image" => crate::snippet::ContentType::Image,
+                "Both" => crate::snippet::ContentType::Both,
+                _ => crate::snippet::ContentType::Text,
+            },
         })
     }).map_err(|e| e.to_string())?;
 
@@ -96,10 +106,11 @@ pub fn add_snippet(s: &Snippet) -> Result<(), String> {
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let mm = format!("{:?}", s.matching_mode);
     let cs = format!("{:?}", s.case_sensitivity);
+    let ct = format!("{:?}", s.content_type);
     conn.execute(
-        "INSERT INTO snippets (uuid, name, keyword, snippet, description, matching_mode, case_sensitivity, group_id, enabled, created_at, modified_at, last_used_at, ai_generated)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
-        params![s.uuid, s.name, s.keyword, s.snippet, s.description, mm, cs, s.group_id, s.enabled as i32, s.created_at, s.modified_at, s.last_used_at, s.ai_generated as i32],
+        "INSERT INTO snippets (uuid, name, keyword, snippet, description, matching_mode, case_sensitivity, group_id, enabled, created_at, modified_at, last_used_at, ai_generated, image_data, content_type)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+        params![s.uuid, s.name, s.keyword, s.snippet, s.description, mm, cs, s.group_id, s.enabled as i32, s.created_at, s.modified_at, s.last_used_at, s.ai_generated as i32, s.image_data, ct],
     ).map_err(|e| e.to_string())?;
     drop(guard);
     trigger::invalidate_cache();
@@ -112,9 +123,10 @@ pub fn update_snippet(s: &Snippet) -> Result<(), String> {
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let mm = format!("{:?}", s.matching_mode);
     let cs = format!("{:?}", s.case_sensitivity);
+    let ct = format!("{:?}", s.content_type);
     conn.execute(
-        "UPDATE snippets SET name=?1, keyword=?2, snippet=?3, description=?4, matching_mode=?5, case_sensitivity=?6, group_id=?7, enabled=?8, modified_at=?9, last_used_at=?10, ai_generated=?11 WHERE uuid=?12",
-        params![s.name, s.keyword, s.snippet, s.description, mm, cs, s.group_id, s.enabled as i32, s.modified_at, s.last_used_at, s.ai_generated as i32, s.uuid],
+        "UPDATE snippets SET name=?1, keyword=?2, snippet=?3, description=?4, matching_mode=?5, case_sensitivity=?6, group_id=?7, enabled=?8, modified_at=?9, last_used_at=?10, ai_generated=?11, image_data=?12, content_type=?13 WHERE uuid=?14",
+        params![s.name, s.keyword, s.snippet, s.description, mm, cs, s.group_id, s.enabled as i32, s.modified_at, s.last_used_at, s.ai_generated as i32, s.image_data, ct, s.uuid],
     ).map_err(|e| e.to_string())?;
     drop(guard);
     trigger::invalidate_cache();

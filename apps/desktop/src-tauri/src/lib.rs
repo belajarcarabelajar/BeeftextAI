@@ -64,11 +64,32 @@ async fn get_snippets() -> Result<Vec<Snippet>, String> {
 }
 
 #[tauri::command]
-async fn add_snippet(keyword: String, snippet_text: String, name: String, description: String, group_id: Option<String>, ai_generated: bool) -> Result<Snippet, String> {
+async fn add_snippet(
+    keyword: String,
+    snippet_text: String,
+    name: String,
+    description: String,
+    group_id: Option<String>,
+    ai_generated: bool,
+    image_data: Option<String>,
+    content_type: Option<String>,
+) -> Result<Snippet, String> {
     let mut s = Snippet::new(keyword, snippet_text, name, description, group_id);
     s.ai_generated = ai_generated;
+
+    if let Some(ref b64) = image_data {
+        s.image_data = Some(b64.clone());
+    }
+    if let Some(ref ct) = content_type {
+        s.content_type = match ct.as_str() {
+            "Image" => snippet::ContentType::Image,
+            "Both" => snippet::ContentType::Both,
+            _ => snippet::ContentType::Text,
+        };
+    }
+
     store::add_snippet(&s)?;
-    
+
     let s_clone = s.clone();
     let client = get_ollama();
     tokio::spawn(async move {
@@ -79,15 +100,19 @@ async fn add_snippet(keyword: String, snippet_text: String, name: String, descri
             }
         }
     });
-    
+
     Ok(s)
 }
 
 #[tauri::command]
-async fn update_snippet_cmd(s: Snippet) -> Result<(), String> {
-    store::update_snippet(&s)?;
-    
-    let s_clone = s.clone();
+async fn update_snippet_cmd(s: Snippet, image_data: Option<String>) -> Result<(), String> {
+    let mut updated = s;
+    if let Some(ref b64) = image_data {
+        updated.image_data = Some(b64.clone());
+    }
+    store::update_snippet(&updated)?;
+
+    let s_clone = updated.clone();
     let client = get_ollama();
     tokio::spawn(async move {
         let text = format!("{} {} {} {}", s_clone.name, s_clone.keyword, s_clone.description, s_clone.snippet);

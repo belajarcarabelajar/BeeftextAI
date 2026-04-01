@@ -10,28 +10,62 @@ pub static NOTIFICATIONS_ENABLED: AtomicBool = AtomicBool::new(true);
 
 /// Perform the text substitution
 pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
-    // 1. Evaluate all variables in the snippet text
-    let expanded = variable::evaluate_variables(&snippet.snippet, ollama).await;
+    use crate::snippet::ContentType;
 
-    // 2. Erase the trigger keyword (backspace simulation)
+    // Evaluate variables only if there's text content
+    let expanded = if !snippet.snippet.is_empty() {
+        variable::evaluate_variables(&snippet.snippet, ollama).await
+    } else {
+        String::new()
+    };
+
+    // Erase the trigger keyword (backspace simulation)
     clipboard::erase_trigger(snippet.keyword.len());
 
-    // 3. Inject the expanded text
-    clipboard::inject_text(&expanded);
+    // Inject content based on type
+    match snippet.content_type {
+        ContentType::Text => {
+            clipboard::inject_text(&expanded);
+        }
+        ContentType::Image => {
+            if let Some(ref b64) = snippet.image_data {
+                clipboard::inject_image(b64);
+            }
+        }
+        ContentType::Both => {
+            // Inject text first, then image after delay
+            if !expanded.is_empty() {
+                clipboard::inject_text(&expanded);
+            }
+            if let Some(ref b64) = snippet.image_data {
+                std::thread::sleep(std::time::Duration::from_millis(150));
+                clipboard::inject_image(b64);
+            }
+        }
+    }
 
-    // 4. Update last_used_at
+    // Update last_used_at
     let mut updated = snippet.clone();
     updated.last_used_at = Some(chrono::Utc::now().to_rfc3339());
     let _ = store::update_snippet(&updated);
 
-    // 5. Log
+    // Log
     let preview = if expanded.len() > 50 { format!("{}...", &expanded[..50]) } else { expanded.clone() };
-    log::info!("Substituted '{}' → '{}'", snippet.keyword, preview);
+    let content_desc = match snippet.content_type {
+        ContentType::Text => format!("'{}'", preview),
+        ContentType::Image => "[image]".to_string(),
+        ContentType::Both => format!("'{}' + [image]", preview),
+    };
+    log::info!("Substituted '{}' → {}", snippet.keyword, content_desc);
 
-    // 6. Show notification (if enabled)
+    // Show notification (if enabled)
     if NOTIFICATIONS_ENABLED.load(Ordering::Relaxed) {
         let title = format!("⚡ {}", if snippet.name.is_empty() { &snippet.keyword } else { &snippet.name });
-        let body = if expanded.len() > 80 { format!("{}...", &expanded[..80]) } else { expanded };
+        let body = match snippet.content_type {
+            ContentType::Text => if expanded.len() > 80 { format!("{}...", &expanded[..80]) } else { expanded },
+            ContentType::Image => "[image]".to_string(),
+            ContentType::Both => "[text + image]".to_string(),
+        };
         std::thread::spawn(move || {
             #[cfg(target_os = "windows")]
             {
@@ -49,7 +83,7 @@ pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
                     body.replace("'", "''")
                 );
                 use std::os::windows::process::CommandExt;
-                
+
                 // 0x08000000 is CREATE_NO_WINDOW, which prevents the brief console flash
                 let _ = Command::new("powershell")
                     .args(["-WindowStyle", "Hidden", "-Command", &ps_script])
