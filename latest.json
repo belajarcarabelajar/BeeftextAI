@@ -1,10 +1,10 @@
 {
   "version": "0.2.8",
-  "notes": "## Bug Fix\n- **Image Data URL Prefix Strip**: Fixed a critical bug where image snippets weren't pasting because `inject_image()` tried to base64-decode the full data URL string (`data:image/png;base64,...`) instead of just the base64 portion. Images now paste correctly in Telegram, WhatsApp, and other apps.\n\n## Previous\n- v0.2.7: Database migration fix for existing users\n- v0.2.6: Image snippet support (Text/Image/Both content types)",
-  "pub_date": "2026-04-01T14:30:00Z",
+  "notes": "## New Features\n- **Image Attachment via Drag & Drop**: Drag and drop images directly into the AI Chat area\n- **Image Attachment via Paste**: Press Ctrl+V to paste images from clipboard in AI Chat\n- **Visual Feedback**: Green overlay appears when dragging images over the chat\n\n## Bug Fix\n- **Image Data URL Prefix Strip**: Fixed a critical bug where image snippets weren't pasting because `inject_image()` tried to base64-decode the full data URL string (`data:image/png;base64,...`) instead of just the base64 portion. Images now paste correctly in Telegram, WhatsApp, and other apps.\n\n## Previous\n- v0.2.7: Database migration fix for existing users\n- v0.2.6: Image snippet support (Text/Image/Both content types)",
+  "pub_date": "2026-04-01T14:35:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3JJYjFRdkhzRHQ0MGl5SkNMQVhudTZqdW8yc0dRZGRETjYwai9GU3g1Zm1VSHlDZDc3Y1hSZXkyM2ZQaWNEc25uMktCT0pHcnMrUytpUWIzTlJhWEE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MDI3MzE0CWZpbGU6QmVlZlRleHQgQUlfMC4yLjhfeDY0LXNldHVwLmV4ZQp0TGl5emFsRzRhSkN1K25kQ0dEbzVEQmVFeHd4WjJ6T2RwSytGblZlZVRMdVBXVjUyOHZJOXR6a2VNaWZXOVoyaVhBQWtPNVMxbnBUS1NpdllpYjVBUT09Cg==",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL29rU3JONkkxMnQrdVNVT0F0RDFnb0dha29iVE14QngrUmJHeVdpZjhrZG5mcytIWHVpVEszcm9GMmdXdFVOdWFFdGxtWWcvS013NU1ZSEhtNEF5NHdJPgp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MDMwMDk5CWZpbGU6QmVlZlRleHQgQUlfMC4yLjhfeDY0LXNldHVwLmV4ZQp6aTJmZXkxRmx2aUZGT0VMNkZYVXNqdU1ENVRwV2JQWFl5ZFpSZllDZkZuYWxzekhoRVJpRisxUm56SGQzUHRudnppbk9POWlLZHRKQk1JY3Z0NXVBZz09Cg==",
       "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.8/BeefText.AI_0.2.8_x64-setup.exe"
     }
   }

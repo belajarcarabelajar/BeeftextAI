@@ -843,6 +843,10 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [imageData, setImageData] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -853,28 +857,105 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
+  // Handle paste (Ctrl+V) for images
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (!ollamaOnline || loading) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              const result = ev.target?.result as string;
+              setImageData(result);
+              setImagePreview(result);
+            };
+            reader.readAsDataURL(file);
+          }
+          break;
+        }
+      }
+    };
+    const chatEl = chatContainerRef.current;
+    chatEl?.addEventListener("paste", handlePaste);
+    return () => chatEl?.removeEventListener("paste", handlePaste);
+  }, [ollamaOnline, loading]);
+
+  const processImageFile = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setImageData(result);
+      setImagePreview(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (ollamaOnline && !loading) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (!ollamaOnline || loading) return;
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      processImageFile(files[0]);
+    }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setImageData(result);
+      setImagePreview(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    if ((!input.trim() && !imageData) || loading) return;
     const MAX_INPUT_TOKENS = 2000;
     const rawMsg = input.trim();
-    const userMsg = truncateToTokens(rawMsg, MAX_INPUT_TOKENS);
-    const tokens = estimateTokenCount(userMsg);
+    const userMsg = rawMsg ? truncateToTokens(rawMsg, MAX_INPUT_TOKENS) : "";
+    const tokens = userMsg ? estimateTokenCount(userMsg) : 0;
     const wasTruncated = userMsg.length < rawMsg.length;
-    console.log(`[TOKEN] sendMessage | chars: ${userMsg.length} | tokens: ~${tokens}${wasTruncated ? ` | truncated from ${rawMsg.length} chars` : ''}`);
+    if (userMsg) {
+      console.log(`[TOKEN] sendMessage | chars: ${userMsg.length} | tokens: ~${tokens}${wasTruncated ? ` | truncated from ${rawMsg.length} chars` : ''}`);
+    }
     setInput("");
     // Add user message + keep only last 10 messages to reduce backend load
     setMessages(prev => {
-      const updated = [...prev, { role: "user", content: userMsg }];
+      const updated = [...prev, { role: "user", content: userMsg || (imageData ? "[image]" : "") }];
       return updated.length > 10 ? updated.slice(updated.length - 10) : updated;
     });
     setLoading(true);
     try {
-      const response = await invoke<string>("chat_with_ai", { message: userMsg });
+      const response = await invoke<string>("chat_with_ai", { message: userMsg, imageData });
       setMessages(prev => [...prev, { role: "assistant", content: response }]);
     } catch (e) {
       showToast(String(e), "error");
       setMessages(prev => [...prev, { role: "assistant", content: `❌ Error: ${e}` }]);
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+      setImageData(null);
+      setImagePreview(null);
+    }
   };
 
   const handleClear = async () => {
@@ -887,7 +968,33 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
   };
 
   return (
-    <div className="chat-container">
+    <div
+      ref={chatContainerRef}
+      className="chat-container"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      style={{ position: "relative" }}
+    >
+      {isDragging && (
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0, 212, 170, 0.15)",
+          border: "3px dashed var(--accent-primary)",
+          borderRadius: 8,
+          zIndex: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 24,
+          fontWeight: "bold",
+          color: "var(--accent-primary)",
+          pointerEvents: "none"
+        }}>
+          🖼️ Drop image here
+        </div>
+      )}
       <div className="content-header">
         <h1>🤖 AI Chat</h1>
         <button className="btn btn-secondary btn-sm" onClick={handleClear}>🗑 Clear Chat</button>
@@ -897,7 +1004,7 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
           <div className="empty-state">
             <div className="empty-state-icon">💬</div>
             <h3>Start a conversation</h3>
-            <p>Ask the AI to create snippets, suggest keywords, or help organize your text library.<br />Try: "Buatkan snippet email izin sakit"</p>
+            <p>Ask the AI to create snippets, suggest keywords, or help organize your text library.<br />Try: "Buatkan snippet email izin sakit"<br /><br /><small style={{ opacity: 0.6 }}>💡 Attach images via drag &amp; drop or Ctrl+V</small></p>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -926,9 +1033,18 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
             ⚠️ Ollama is offline. Please start Ollama to use the AI chat.
           </div>
         )}
+        {imagePreview && (
+          <div style={{ position: "relative", display: "inline-block", marginBottom: 8 }}>
+            <img src={imagePreview} alt="Attachment" style={{ maxHeight: 80, borderRadius: 6, border: "1px solid var(--border)" }} />
+            <button onClick={() => { setImageData(null); setImagePreview(null); }}
+              style={{ position: "absolute", top: -8, right: -8, background: "var(--bg-tertiary)", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 10, lineHeight: "20px" }}>✕</button>
+          </div>
+        )}
         <div className="chat-input-wrapper">
+          <input type="file" accept="image/*" onChange={handleImageSelect} disabled={!ollamaOnline || loading} style={{ display: "none" }} id="chat-image-upload" />
+          <label htmlFor="chat-image-upload" style={{ cursor: "pointer", padding: "4px 8px", fontSize: 18 }} title="Attach image">🖼️</label>
           <textarea className="chat-input" placeholder="Ask AI to create a snippet..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} rows={1} disabled={!ollamaOnline || loading} />
-          <button className="chat-send-btn" onClick={sendMessage} disabled={!ollamaOnline || loading || !input.trim()}>➤</button>
+          <button className="chat-send-btn" onClick={sendMessage} disabled={!ollamaOnline || loading || (!input.trim() && !imageData)}>➤</button>
         </div>
       </div>
     </div>
@@ -965,10 +1081,12 @@ function MessageContent({ content, showToast }: { content: string; showToast: (m
           }
         }
 
-        await invoke("add_snippet", { keyword: generatedKeyword, snippetText: snippetJson.snippet || "", name: snippetJson.name || "", description: snippetJson.description || "", groupId: groupId, aiGenerated: true });
+        await invoke("add_snippet", { keyword: generatedKeyword, snippetText: snippetJson.snippet || "", name: snippetJson.name || "", description: snippetJson.description || "", groupId: groupId, aiGenerated: true, imageData: snippetJson.image_data || null, contentType: snippetJson.content_type || "Text" });
         showToast("✅ Snippet saved!");
       } catch (e) { showToast(String(e), "error"); }
     };
+    const ct = snippetJson.content_type;
+    const img = snippetJson.image_data;
     return (
       <div>
         {textBefore && <p style={{ marginBottom: 10 }}>{textBefore}</p>}
@@ -978,7 +1096,13 @@ function MessageContent({ content, showToast }: { content: string; showToast: (m
           {snippetJson.name && <div className="snippet-card-chat-field"><span className="snippet-card-chat-label">Name:</span><span className="snippet-card-chat-value">{snippetJson.name}</span></div>}
           {snippetJson.description && <div className="snippet-card-chat-field"><span className="snippet-card-chat-label">Desc:</span><span className="snippet-card-chat-value" style={{ color: "var(--text-secondary)", fontSize: 12 }}>{snippetJson.description}</span></div>}
           {snippetJson.group && <div className="snippet-card-chat-field"><span className="snippet-card-chat-label">Group:</span><span className="snippet-card-chat-value" style={{ color: "var(--text-secondary)", fontSize: 12 }}>{snippetJson.group}</span></div>}
-          <div className="snippet-card-chat-field"><span className="snippet-card-chat-label">Snippet:</span><span className="snippet-card-chat-value" style={{ whiteSpace: "pre-wrap" }}>{snippetJson.snippet}</span></div>
+          {snippetJson.snippet && <div className="snippet-card-chat-field"><span className="snippet-card-chat-label">Snippet:</span><span className="snippet-card-chat-value" style={{ whiteSpace: "pre-wrap" }}>{snippetJson.snippet}</span></div>}
+          {img && (ct === "Image" || ct === "Both") && (
+            <div className="snippet-card-chat-field">
+              <span className="snippet-card-chat-label">Image Preview:</span>
+              <img src={img} alt="Snippet" style={{ maxHeight: 100, borderRadius: 4, marginTop: 4, border: "1px solid var(--border)" }} />
+            </div>
+          )}
           <div className="snippet-card-chat-actions"><button className="btn btn-primary btn-sm" onClick={handleSave}>✅ Save Snippet</button></div>
         </div>
         {textAfter && <p style={{ marginTop: 10 }}>{textAfter}</p>}
