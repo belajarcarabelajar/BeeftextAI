@@ -95,7 +95,10 @@ async fn add_snippet(
     let s_clone = s.clone();
     let client = get_ollama();
     tokio::spawn(async move {
-        let text = format!("{} {} {} {}", s_clone.name, s_clone.keyword, s_clone.description, s_clone.snippet);
+        let text = format!(
+            "name: {} | keyword: {} | description: {} | content: {}",
+            s_clone.name, s_clone.keyword, s_clone.description, s_clone.snippet
+        );
         match client.embed(vec![text]).await {
             Ok(embeddings) => {
                 if let Some(emb) = embeddings.first() {
@@ -124,7 +127,10 @@ async fn update_snippet_cmd(s: Snippet, image_data: Option<String>) -> Result<()
     let s_clone = updated.clone();
     let client = get_ollama();
     tokio::spawn(async move {
-        let text = format!("{} {} {} {}", s_clone.name, s_clone.keyword, s_clone.description, s_clone.snippet);
+        let text = format!(
+            "name: {} | keyword: {} | description: {} | content: {}",
+            s_clone.name, s_clone.keyword, s_clone.description, s_clone.snippet
+        );
         match client.embed(vec![text]).await {
             Ok(embeddings) => {
                 if let Some(emb) = embeddings.first() {
@@ -437,8 +443,11 @@ impl Default for EmbedConfig {
 }
 
 fn make_embed_text(name: &str, keyword: &str, description: &str, snippet: &str, max_tokens: usize) -> String {
-    // Combine all fields with separators
-    let combined = format!("{} {} {} {}", name, keyword, description, snippet);
+    // Combine all fields with labeled separators to help embedding model understand context
+    let combined = format!(
+        "name: {} | keyword: {} | description: {} | content: {}",
+        name, keyword, description, snippet
+    );
     token::truncate_to_tokens(&combined, max_tokens)
 }
 
