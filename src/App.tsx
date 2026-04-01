@@ -23,6 +23,8 @@ interface Snippet {
   modified_at: string;
   last_used_at: string | null;
   ai_generated: boolean;
+  image_data: string | null;
+  content_type: "Text" | "Image" | "Both";
 }
 
 interface Group {
@@ -486,15 +488,41 @@ function SnippetModal({ snippet, groups, onClose, onSave, showToast }: {
   const [groupId, setGroupId] = useState<string | null>(snippet?.group_id || null);
   const [matchingMode, setMatchingMode] = useState<"Strict" | "Loose">(snippet?.matching_mode || "Strict");
   const [caseSensitivity, setCaseSensitivity] = useState<"CaseSensitive" | "CaseInsensitive">(snippet?.case_sensitivity || "CaseSensitive");
+  const [contentType, setContentType] = useState<"Text" | "Image" | "Both">(snippet?.content_type || "Text");
+  const [imageData, setImageData] = useState<string | null>(snippet?.image_data || null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const insertVariable = (v: string) => {
     setText(prev => prev + v);
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setImageData(result);
+      setImagePreview(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setImageData(null);
+    setImagePreview(null);
+  };
+
+  // Validate: text required for Text and Both types
+  const isTextRequired = contentType === "Text" || contentType === "Both";
+  const isImageRequired = contentType === "Image" || contentType === "Both";
+
   const handleSave = async () => {
-    if (!keyword.trim() || !text.trim()) { showToast("Keyword and snippet text are required", "error"); return; }
-    
+    if (!keyword.trim()) { showToast("Keyword is required", "error"); return; }
+    if (isTextRequired && !text.trim()) { showToast("Snippet text is required for Text and Both types", "error"); return; }
+    if (contentType !== "Text" && !imageData) { showToast("Please select an image", "error"); return; }
+
     // Check for duplicate keyword
     try {
       const allSnippets = await invoke<Snippet[]>("get_snippets");
@@ -510,10 +538,11 @@ function SnippetModal({ snippet, groups, onClose, onSave, showToast }: {
     try {
       if (snippet) {
         await invoke("update_snippet_cmd", {
-          s: { ...snippet, keyword: keyword.trim(), name, snippet: text, description: desc, group_id: groupId, matching_mode: matchingMode, case_sensitivity: caseSensitivity, modified_at: new Date().toISOString() }
+          s: { ...snippet, keyword: keyword.trim(), name, snippet: text, description: desc, group_id: groupId, matching_mode: matchingMode, case_sensitivity: caseSensitivity, modified_at: new Date().toISOString(), content_type: contentType },
+          imageData,
         });
       } else {
-        await invoke("add_snippet", { keyword: keyword.trim(), snippetText: text, name, description: desc, groupId, aiGenerated: false });
+        await invoke("add_snippet", { keyword: keyword.trim(), snippetText: text, name, description: desc, groupId, aiGenerated: false, imageData, contentType });
       }
       onSave();
     } catch (e) { showToast(String(e), "error"); }
@@ -522,7 +551,7 @@ function SnippetModal({ snippet, groups, onClose, onSave, showToast }: {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+      <div className="modal" style={{ maxWidth: 650 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{snippet ? "✏️ Edit Snippet" : "✨ New Snippet"}</h2>
           <button className="modal-close" onClick={onClose}>✕</button>
@@ -539,16 +568,63 @@ function SnippetModal({ snippet, groups, onClose, onSave, showToast }: {
             </div>
           </div>
 
+          {/* Content Type Toggle */}
           <div className="input-group">
-            <label className="input-label">Snippet Text</label>
-            <div className="variable-toolbar">
-              <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginRight: 6 }}>Insert:</span>
-              {["#{clipboard}", "#{date}", "#{time}", "#{input:}", "#{combo:}", "#{ai:}"].map(v => (
-                <button key={v} className="var-btn" onClick={() => insertVariable(v)} title={v}>{v.replace("#{", "").replace("}", "")}</button>
+            <label className="input-label">Content Type</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              {(["Text", "Image", "Both"] as const).map(ct => (
+                <button key={ct}
+                  className={`btn ${contentType === ct ? "btn-primary" : "btn-secondary"}`}
+                  onClick={() => setContentType(ct)}
+                  style={{ flex: 1, fontSize: 13 }}
+                >
+                  {ct === "Text" ? "📝 Text" : ct === "Image" ? "🖼️ Image" : "📝🖼️ Both"}
+                </button>
               ))}
             </div>
-            <textarea className="textarea" placeholder="The text that replaces the keyword..." value={text} onChange={e => setText(e.target.value)} rows={5} style={{ fontFamily: "var(--font-mono)", fontSize: 13 }} />
           </div>
+
+          {/* Text Input — shown for Text and Both */}
+          {(contentType === "Text" || contentType === "Both") && (
+            <div className="input-group">
+              <label className="input-label">Snippet Text {contentType === "Both" && <span style={{ color: "var(--text-tertiary)" }}>(pasted first)</span>}</label>
+              <div className="variable-toolbar">
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginRight: 6 }}>Insert:</span>
+                {["#{clipboard}", "#{date}", "#{time}", "#{input:}", "#{combo:}", "#{ai:}"].map(v => (
+                  <button key={v} className="var-btn" onClick={() => insertVariable(v)} title={v}>{v.replace("#{", "").replace("}", "")}</button>
+                ))}
+              </div>
+              <textarea className="textarea" placeholder="The text that replaces the keyword..." value={text} onChange={e => setText(e.target.value)} rows={5} style={{ fontFamily: "var(--font-mono)", fontSize: 13 }} />
+            </div>
+          )}
+
+          {/* Image Input — shown for Image and Both */}
+          {contentType === "Image" && (
+            <div className="input-group">
+              <label className="input-label">Image</label>
+              <input className="input" type="file" accept="image/*" onChange={handleImageSelect} />
+              {imagePreview && (
+                <div style={{ marginTop: 8, position: "relative", display: "inline-block" }}>
+                  <img src={imagePreview} alt="Preview" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 6, border: "1px solid var(--border)" }} />
+                  <button className="btn btn-danger" onClick={handleRemoveImage} style={{ marginTop: 6 }}>Remove Image</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Image + Text Together — shown for Both */}
+          {contentType === "Both" && (
+            <div className="input-group">
+              <label className="input-label">Image <span style={{ color: "var(--text-tertiary)" }}>(pasted after text, ~150ms delay)</span></label>
+              <input className="input" type="file" accept="image/*" onChange={handleImageSelect} />
+              {imagePreview && (
+                <div style={{ marginTop: 8, position: "relative", display: "inline-block" }}>
+                  <img src={imagePreview} alt="Preview" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 6, border: "1px solid var(--border)" }} />
+                  <button className="btn btn-danger" onClick={handleRemoveImage} style={{ marginTop: 6 }}>Remove Image</button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="input-group">
             <label className="input-label">Description</label>

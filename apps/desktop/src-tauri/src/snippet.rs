@@ -24,6 +24,18 @@ impl Default for CaseSensitivity {
     fn default() -> Self { Self::CaseSensitive }
 }
 
+/// Content type for snippet — text only, image only, or both
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub enum ContentType {
+    Text,
+    Image,
+    Both,
+}
+
+impl Default for ContentType {
+    fn default() -> Self { Self::Text }
+}
+
 /// Snippet model — modern equivalent of Beeftext's Combo class
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Snippet {
@@ -40,6 +52,8 @@ pub struct Snippet {
     pub modified_at: String,
     pub last_used_at: Option<String>,
     pub ai_generated: bool,
+    pub image_data: Option<String>,
+    pub content_type: ContentType,
 }
 
 impl Snippet {
@@ -59,6 +73,8 @@ impl Snippet {
             modified_at: now,
             last_used_at: None,
             ai_generated: false,
+            image_data: None,
+            content_type: ContentType::default(),
         }
     }
 

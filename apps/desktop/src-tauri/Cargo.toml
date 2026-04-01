@@ -1,6 +1,6 @@
 [package]
 name = "beeftextai"
-version = "0.2.5"
+version = "0.2.6"
 description = "BeefText AI — Modern Text Expander Powered by Ollama"
 authors = ["Tedi Rahmat"]
 edition = "2021"
@@ -24,6 +24,8 @@ tokio = { version = "1", features = ["full"] }
 arboard = "3"
 rdev = "0.5"
 dirs = "6"
+image = "0.25"
+base64 = "0.22"
 log = "0.4"
 env_logger = "0.11"
 rusqlite = { version = "0.32", features = ["bundled"] }
