@@ -13,6 +13,10 @@
       "identifier": "fs:allow-write-text-file",
       "allow": [{ "path": "**" }]
     },
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [{ "path": "**" }]
+    },
     "dialog:default",
     "dialog:allow-save"
   ]
