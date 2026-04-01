@@ -1,10 +1,10 @@
 {
   "version": "0.2.9",
-  "notes": "## Bug Fixes\n- **Plugin not found error**: Fixed Export JSON/CSV and Cheat Sheet failing with 'Plugin not found' — `tauri-plugin-fs` was missing plugin initialization\n- **Drag & drop image**: Added document-level drag events so images dragged from Windows Explorer are now properly detected\n- **Cheat Sheet**: Fixed not working (was using blob URL which fails in Tauri WebView)\n- **Export JSON/CSV**: Now shows native save dialog and confirms file location\n- **Import from Beeftext**: File filter changed to 'All Files' (was only .json)\n- **Delete All Snippets**: Fixed silently failing (was calling non-existent command)",
-  "pub_date": "2026-04-01T17:05:00Z",
+  "notes": "## Bug Fixes\n- **Plugin not found error**: Fixed Export JSON/CSV and Cheat Sheet failing with 'Plugin not found' — tauri-plugin-fs was missing plugin initialization\n- **Drag & drop image**: Added document-level drag events so images dragged from Windows Explorer are now properly detected\n- **Cheat Sheet**: Fixed not working (was using blob URL which fails in Tauri WebView)\n- **Export JSON/CSV**: Now shows native save dialog and confirms file location\n- **Import from Beeftext**: File filter changed to 'All Files' (was only .json)\n- **Delete All Snippets**: Fixed silently failing (was calling non-existent command)\n- **App crash on launch**: Fixed tauri.conf.json 'fs.scope' config (invalid field)",
+  "pub_date": "2026-04-01T17:20:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL2dCbzljbWtOdmxoZTJoQWpYUGR6Z1RueDRDVHRHd0FuWjY1TzdNZTdEUzhUK2ZLWU0xRnhWY1RoVy9Ya1BrRllHMUZxSDZ3c2ZYclFmczc0Mjh1NUEwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MDM2Mzk1CWZpbGU6QmVlZlRleHQgQUlfMC4yLjlfeDY0LXNldHVwLmV4ZQo1VjZHeFVja29jbDBDR3FVUXF0MDZSd3VPUVQ5OHVkNVN3d3NGME9xRWFzRHFoOW5lRVo1TldKOTlYSE10UXE3Q2lDa0Z1TkprMXVqbGdTdjNuanRCZz09Cg==",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3FjODlnWTJvRW9waDZuWmFWOE5HdTNwM2pwekRHd3V2ZUI1cUVVa1FvM0tIbTVpNGQwNkdPTUYwTkRJR0tlOGd5NGcvL3p6L2VjYlAyZ05QajV5Q3dFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MDM3MDI1CWZpbGU6QmVlZlRleHQgQUlfMC4yLjlfeDY0X2VuLVVTLm1zaQpoVWg0K0FoRjY1WE1qNGNQUDRmUkh5ZWJwbzB2R1ZZQjVrTC8zU1hmVUVBTldoMlM0UERZOXN5R0JzdGFBOW9QOHk0N2Nydm4yZGxlelNXbkZORy9DQT09Cg==",
       "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.9/BeefText.AI_0.2.9_x64-setup.exe"
     }
   }

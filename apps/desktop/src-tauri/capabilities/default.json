@@ -9,7 +9,10 @@
     "updater:default",
     "process:allow-restart",
     "fs:default",
-    "fs:allow-write-text-file",
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "**" }]
+    },
     "dialog:default",
     "dialog:allow-save"
   ]
