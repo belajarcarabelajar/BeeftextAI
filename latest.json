@@ -1,11 +1,11 @@
 {
-  "version": "0.4.0",
-  "notes": "## What's New\n- **System Tray Fix**: Resolved duplicate tray icon issue when closing/reopening the app.\n- **New Variable: #{input:description}**: Interactive text input dialog via PowerShell.\n- **New Variable: #{powershell:path}**: Execute PowerShell scripts and insert output.\n- **New Variable: #{powershell:path:timeoutMs}**: PowerShell with configurable timeout (0=indefinite).\n- **New Variable: #{key:keyname}**: Simulate single key press (tab, enter, up, f1-f12, etc.).\n- **New Variable: #{key:keyname:count}**: Repeat key press N times.\n- **New Variable: #{shortcut:mod+key}**: Simulate multi-modifier shortcuts (e.g. Ctrl+Shift+J).\n- **New Variable: #{delay:ms}**: Pause during snippet expansion.\n- **New Variable: #{dateTime:+offset:format}**: Date with offset/shift (e.g. +1d-2h).\n- **UI Improvements**: Variable toolbar upgraded to dropdown with all 20+ variables listed.\n- **Settings Page**: All template variables now documented with examples.",
-  "pub_date": "2026-04-01T23:30:00Z",
+  "version": "0.4.1",
+  "notes": "## Bug Fixes\n- **System Tray Duplicate Icon Fix**: Added single-instance enforcement via `tauri-plugin-single-instance`. Closing and reopening the app no longer creates duplicate tray icons — the existing window is focused instead.\n- **Variable Insertion Position Fix**: Variables are now inserted at the actual cursor position in the snippet editor, rather than always at the end of the text.",
+  "pub_date": "2026-04-02T00:15:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3BLUGtVSDlYRVZRelRleHYzbDJZcG81SDZQb0hCNUIwWlJLSVVud2F6T0pWTU9MTFdGaWdFV2xqN045TlB2Y21aa29oVGRmUlJLTnE1dlJDWTMyZ0FVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MDYxMTQwCWZpbGU6QmVlZlRleHQuQUlfMC40LjBfeDY0LXNldHVwLmV4ZQpUK00yR21rQ0lwMFhyWDQyYW55WTdTTFNKOTQ2SnJOK1p2cnY5Y0I1cGcwS3RLRDBrN3VFektEclFFZ1BCSFVteFowRHg5eUdkdUVRcVBKTm8xQ2xDQT09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.4.0/BeefText.AI_0.4.0_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3EwZTFyZkYzOVlNTG93SVN6U0JYSEJ0dnVzN3haUFdkTDh1Z0VwUi8xT0NzKzJjZlhTMThTVFRxYUZrWTBtaVlpYzBkSXJUaFhrY0dYV2laZ2gzbFFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MDYyNzAyCWZpbGU6QmVlZlRleHQuQUlfMC40LjFfeDY0LXNldHVwLmV4ZQpydWlwZXVZTFF1NzdpZkRiNlRFeU95WFRNbzJNSlNSSnpUQ0d2N1BpMzZoS1R3THNid2tabUMzVG1qdlJ5NTNCQkJBSFAyWC9SOTIzKzBEb0toaW9Cdz09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.4.1/BeefText.AI_0.4.1_x64-setup.exe"
     }
   }
 }

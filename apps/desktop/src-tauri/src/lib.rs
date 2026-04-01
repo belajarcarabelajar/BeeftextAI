@@ -17,6 +17,7 @@ use group::Group;
 use keyboard::KeyboardState;
 use once_cell::sync::Lazy;
 use std::sync::Arc;
+use tauri::Manager;
 
 static KEYBOARD: Lazy<Arc<KeyboardState>> = Lazy::new(|| Arc::new(KeyboardState::new()));
 
@@ -642,6 +643,13 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // If a second instance is launched, show/focus the existing window instead.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .setup(|app| {
 
             use tauri::menu::{MenuBuilder, MenuItemBuilder};

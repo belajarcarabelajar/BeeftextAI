@@ -509,9 +509,25 @@ function SnippetModal({ snippet, groups, onClose, onSave, showToast }: {
   const [imageData, setImageData] = useState<string | null>(snippet?.image_data || null);
   const [imagePreview, setImagePreview] = useState<string | null>(snippet?.image_data || null);
   const [saving, setSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const insertVariable = (v: string) => {
-    setText(prev => prev + v);
+    const ta = textareaRef.current;
+    if (!ta) {
+      setText(prev => prev + v);
+      return;
+    }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const before = text.slice(0, start);
+    const after = text.slice(end);
+    setText(before + v + after);
+    // Restore focus and cursor position after React re-render
+    requestAnimationFrame(() => {
+      ta.focus();
+      const newPos = start + v.length;
+      ta.setSelectionRange(newPos, newPos);
+    });
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -640,7 +656,7 @@ function SnippetModal({ snippet, groups, onClose, onSave, showToast }: {
                   ))}
                 </select>
               </div>
-              <textarea className="textarea" placeholder="The text that replaces the keyword..." value={text} onChange={e => setText(e.target.value)} rows={5} style={{ fontFamily: "var(--font-mono)", fontSize: 13 }} />
+              <textarea ref={textareaRef} className="textarea" placeholder="The text that replaces the keyword..." value={text} onChange={e => setText(e.target.value)} rows={5} style={{ fontFamily: "var(--font-mono)", fontSize: 13 }} />
             </div>
           )}
 
