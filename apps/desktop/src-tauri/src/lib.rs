@@ -96,9 +96,16 @@ async fn add_snippet(
     let client = get_ollama();
     tokio::spawn(async move {
         let text = format!("{} {} {} {}", s_clone.name, s_clone.keyword, s_clone.description, s_clone.snippet);
-        if let Ok(embeddings) = client.embed(vec![text]).await {
-            if let Some(emb) = embeddings.first() {
-                let _ = store::save_embedding(&s_clone.uuid, emb);
+        match client.embed(vec![text]).await {
+            Ok(embeddings) => {
+                if let Some(emb) = embeddings.first() {
+                    if let Err(e) = store::save_embedding(&s_clone.uuid, emb) {
+                        eprintln!("[EMBED] Failed to save embedding for {}: {}", s_clone.uuid, e);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("[EMBED] Failed to generate embedding for {}: {}", s_clone.uuid, e);
             }
         }
     });
@@ -118,9 +125,16 @@ async fn update_snippet_cmd(s: Snippet, image_data: Option<String>) -> Result<()
     let client = get_ollama();
     tokio::spawn(async move {
         let text = format!("{} {} {} {}", s_clone.name, s_clone.keyword, s_clone.description, s_clone.snippet);
-        if let Ok(embeddings) = client.embed(vec![text]).await {
-            if let Some(emb) = embeddings.first() {
-                let _ = store::save_embedding(&s_clone.uuid, emb);
+        match client.embed(vec![text]).await {
+            Ok(embeddings) => {
+                if let Some(emb) = embeddings.first() {
+                    if let Err(e) = store::save_embedding(&s_clone.uuid, emb) {
+                        eprintln!("[EMBED] Failed to save embedding for {}: {}", s_clone.uuid, e);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("[EMBED] Failed to generate embedding for {}: {}", s_clone.uuid, e);
             }
         }
     });
@@ -270,7 +284,9 @@ async fn get_chat_history_cmd() -> Result<Vec<(String, String)>, String> {
 
 #[tauri::command]
 async fn semantic_search(query: String, limit: usize) -> Result<Vec<(String, f32)>, String> {
-    let query_embeddings = get_ollama().embed(vec![query]).await?;
+    // Truncate query to avoid overflow and improve embedding quality
+    let query_text = token::truncate_to_tokens(&query, 512);
+    let query_embeddings = get_ollama().embed(vec![query_text]).await?;
     let query_emb = query_embeddings.first().ok_or("No embedding returned")?;
     let stored = store::get_all_embeddings()?;
     
@@ -395,7 +411,7 @@ struct ReEmbedResult {
 
 /// Embedding configuration
 const DEFAULT_EMBED_BATCH_SIZE: usize = 1;
-const DEFAULT_EMBED_MAX_TOKENS: usize = 1024;
+const DEFAULT_EMBED_MAX_TOKENS: usize = 4096;
 
 #[derive(Clone, Debug)]
 struct EmbedConfig {

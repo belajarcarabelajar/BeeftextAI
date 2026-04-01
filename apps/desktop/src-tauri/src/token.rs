@@ -1,21 +1,24 @@
 /// Token counting utilities using approximate character-based estimation.
 /// For exact counting, cl100k_base tokenizer would be needed.
-/// Approximation: ~4 chars per token (typical for English-heavy text).
-const CHARS_PER_TOKEN: usize = 4;
+/// Approximation: ~3 chars per token (more accurate for multilingual text including Indonesian).
+const CHARS_PER_TOKEN: usize = 3;
 
 /// Estimate token count for a string using character-based approximation.
 pub fn estimate_tokens(text: &str) -> usize {
     if text.is_empty() {
         return 0;
     }
+    let chars = text.chars().count();
     // Count words
     let words: Vec<&str> = text.split_whitespace().collect();
     if words.is_empty() {
-        return (text.chars().count() + CHARS_PER_TOKEN - 1) / CHARS_PER_TOKEN;
+        return (chars + CHARS_PER_TOKEN - 1) / CHARS_PER_TOKEN;
     }
-    // Word-based estimate: words * 1.5 ≈ tokens
+    // Word-based estimate: words * 1.5 ≈ tokens (English)
     let word_based = (words.len() * 3 + 1) / 2;
-    let char_based = (text.chars().count() + CHARS_PER_TOKEN - 1) / CHARS_PER_TOKEN;
+    // Char-based is more reliable for multilingual text
+    let char_based = (chars + CHARS_PER_TOKEN - 1) / CHARS_PER_TOKEN;
+    // Use max to avoid underestimating (safer for truncation)
     word_based.max(char_based)
 }
 

@@ -490,7 +490,7 @@ function SnippetModal({ snippet, groups, onClose, onSave, showToast }: {
   const [caseSensitivity, setCaseSensitivity] = useState<"CaseSensitive" | "CaseInsensitive">(snippet?.case_sensitivity || "CaseSensitive");
   const [contentType, setContentType] = useState<"Text" | "Image" | "Both">(snippet?.content_type || "Text");
   const [imageData, setImageData] = useState<string | null>(snippet?.image_data || null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(snippet?.image_data || null);
   const [saving, setSaving] = useState(false);
 
   const insertVariable = (v: string) => {
@@ -903,7 +903,13 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
+    // Only set isDragging false if we're leaving the container entirely
+    // (not just moving between child elements like .chat-messages or .chat-input-container)
+    const rect = e.currentTarget.getBoundingClientRect();
+    const { clientX, clientY } = e;
+    if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+      setIsDragging(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
