@@ -367,8 +367,8 @@ struct ReEmbedResult {
 }
 
 /// Embedding configuration
-const DEFAULT_EMBED_BATCH_SIZE: usize = 8;
-const DEFAULT_EMBED_MAX_TOKENS: usize = 8192;
+const DEFAULT_EMBED_BATCH_SIZE: usize = 1;
+const DEFAULT_EMBED_MAX_TOKENS: usize = 1024;
 
 #[derive(Clone, Debug)]
 struct EmbedConfig {

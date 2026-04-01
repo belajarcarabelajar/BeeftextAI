@@ -5,6 +5,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation, Language } from "./i18n";
+import { getPreferredTheme, setTheme, toggleTheme, getStoredTheme, initTheme, Theme } from "./theme";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,8 +60,20 @@ export default function App() {
   const [appVersion, setAppVersion] = useState("...");
   const [showForm, setShowForm] = useState(false);
   const [editingSnippet, setEditingSnippet] = useState<Snippet | null>(null);
+  const [theme, setThemeState] = useState<Theme>(() => getStoredTheme() ?? "dark");
 
   useEffect(() => {
+    initTheme();
+    const mq = window.matchMedia?.("(prefers-color-scheme: light)");
+    const handler = () => {
+      if (!getStoredTheme()) {
+        const next = getPreferredTheme();
+        setTheme(next);
+        setThemeState(next);
+      }
+    };
+    if (mq) mq.addEventListener("change", handler);
+
     const check = async () => {
       try {
         const online = await invoke<boolean>("ollama_status");
@@ -72,10 +85,12 @@ export default function App() {
     invoke<Language | null>("get_preference", { key: "language" })
       .then(v => { if (v) setLang(v); })
       .catch(() => {});
-    
     getVersion().then(v => setAppVersion("v" + v)).catch(console.error);
-    
-    return () => clearInterval(interval);
+
+    return () => {
+      if (mq) mq.removeEventListener("change", handler);
+      clearInterval(interval);
+    };
   }, []);
 
   const t = useTranslation(lang);
@@ -98,6 +113,11 @@ export default function App() {
     setTimeout(() => setToast(null), 3500);
   }, []);
 
+  const handleToggleTheme = () => {
+    const next = toggleTheme();
+    setThemeState(next);
+  };
+
   return (
     <div className="app-layout">
       <aside className="sidebar">
@@ -109,6 +129,30 @@ export default function App() {
               <div className="sidebar-logo-version">{appVersion}</div>
             </div>
           </div>
+          <button
+            className="theme-toggle"
+            onClick={handleToggleTheme}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            {theme === "dark" ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>
+                <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            )}
+          </button>
         </div>
         <nav className="sidebar-nav">
           <div className="nav-section-title">Main</div>

@@ -24,7 +24,7 @@
 
   --text-primary: #ffffff;
   --text-secondary: #cccccc;
-  --text-tertiary: #888888;
+  --text-tertiary: #666666;
   --text-accent: #ffc107;
 
   --border-subtle: #262626;
@@ -105,6 +105,9 @@ body {
 }
 
 .sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 20px;
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -1093,4 +1096,137 @@ select.input {
   background-position: right 12px center;
   padding-right: 32px;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Theme: Dark (explicit)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="dark"] {
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #161616;
+  --bg-tertiary: #1e1e1e;
+  --bg-card: #1e1e1e;
+  --bg-card-hover: #252525;
+  --bg-glass: #1a1a1a;
+  --bg-input: #181818;
+  --text-primary: #e8e8e8;
+  --text-secondary: #888888;
+  --text-tertiary: #666666;
+  --border-subtle: #242424;
+  --border-medium: #333333;
+  --border-accent: rgba(255, 193, 7, 0.35);
+  --accent-primary: #ffc107;
+  --accent-secondary: #fc5c1e;
+  --accent-success: #10b981;
+  --accent-warning: #ffbf00;
+  --accent-error: #e52b2b;
+  --accent-info: #60a5fa;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(255, 193, 7, 0.3);
+  --accent-glow: rgba(255, 193, 7, 0.3);
+  --accent-gradient: linear-gradient(135deg, #ffc107 0%, #fc5c1e 100%);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Theme: Light
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="light"] {
+  --bg-primary: #f5f5f5;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #ebebeb;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f0f0f0;
+  --bg-glass: rgba(255, 255, 255, 0.92);
+  --bg-input: #ffffff;
+  --text-primary: #1a1a1a;
+  --text-secondary: #5a5a5a;
+  --text-tertiary: #888888;
+  --border-subtle: #d8d8d8;
+  --border-medium: #c0c0c0;
+  --border-accent: rgba(230, 168, 0, 0.5);
+  --accent-primary: #e6a800;
+  --accent-secondary: #d94f15;
+  --accent-success: #0d9668;
+  --accent-warning: #cc9900;
+  --accent-error: #c92a2a;
+  --accent-info: #3b82f6;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.10);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 20px rgba(230, 168, 0, 0.25);
+  --accent-glow: rgba(230, 168, 0, 0.25);
+  --accent-gradient: linear-gradient(135deg, #e6a800 0%, #d94f15 100%);
+}
+
+/* ── HTML background to prevent flash ── */
+html[data-theme="dark"] { background: #0f0f0f; }
+html[data-theme="light"] { background: #f5f5f5; }
+
+/* ── Light Mode Scrollbar ── */
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #aaaaaa;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #888888;
+}
+
+/* ── Light Mode Focus Rings ── */
+[data-theme="light"] .input:focus,
+[data-theme="light"] .textarea:focus,
+[data-theme="light"] .chat-input:focus,
+[data-theme="light"] .search-bar input:focus {
+  border-color: #e6a800;
+  box-shadow: 0 0 0 3px rgba(230, 168, 0, 0.2);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Theme Toggle Button
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  background: var(--bg-card-hover);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+[data-theme="light"] .theme-toggle {
+  background: #ffffff;
+  border-color: #d0d0d0;
+  color: #5a5a5a;
+}
+
+[data-theme="light"] .theme-toggle:hover {
+  background: #f0f0f0;
+  color: #e6a800;
+  border-color: #e6a800;
+}
+
+[data-theme="light"] .theme-toggle:focus-visible {
+  outline-color: #e6a800;
+}
+
+/* ── Sidebar header layout with toggle ── */
 
