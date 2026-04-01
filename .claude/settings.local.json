@@ -62,7 +62,10 @@
       "Bash(cd /c/Users/Tedi Rahmat/BeeftextAI)",
       "Bash(npx tsc:*)",
       "Bash(node -e \"const p=require\\(''''./package.json''''\\);console.log\\(p.version\\)\")",
-      "Bash(cd C:/Users/Tedi Rahmat/BeeftextAI)"
+      "Bash(cd C:/Users/Tedi Rahmat/BeeftextAI)",
+      "Bash(powershell:*)",
+      "Bash(gh auth:*)",
+      "Bash(git show:*)"
     ]
   }
 }
