@@ -865,6 +865,45 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Global drag-drop overlay for external files (Windows Explorer drag)
+  useEffect(() => {
+    const handleDocDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer?.types.includes("Files")) {
+        if (ollamaOnline && !loading) setIsDragging(true);
+      }
+    };
+    const handleDocDrop = (e: DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      if (!ollamaOnline || loading) return;
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        if (file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const result = ev.target?.result as string;
+            setImageData(result);
+            setImagePreview(result);
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    };
+    const handleDocDragLeave = (e: DragEvent) => {
+      if (e.relatedTarget === null) setIsDragging(false);
+    };
+    document.addEventListener("dragover", handleDocDragOver);
+    document.addEventListener("drop", handleDocDrop);
+    document.addEventListener("dragleave", handleDocDragLeave);
+    return () => {
+      document.removeEventListener("dragover", handleDocDragOver);
+      document.removeEventListener("drop", handleDocDrop);
+      document.removeEventListener("dragleave", handleDocDragLeave);
+    };
+  }, [ollamaOnline, loading]);
+
   useEffect(() => {
     invoke<[string, string][]>("get_chat_history_cmd").then(history => {
       setMessages(history.map(([role, content]) => ({ role, content })));
