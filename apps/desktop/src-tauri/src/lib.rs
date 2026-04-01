@@ -55,7 +55,7 @@ For text snippets: set content_type to "Text" and omit image_data.
 User's existing snippets are provided below. Use them to avoid duplicates and answer questions.
 
 ### Template Variables
-#{clipboard} #{date} #{time} #{dateTime:format} #{input:desc} #{combo:keyword} #{ai:prompt}"#;
+#{clipboard} #{date} #{time} #{date:format} #{time:format} #{dateTime:format} #{cursor} #{input:desc} #{combo:keyword} #{ai:prompt}"#;
 
 
 // ─── Snippet Commands ─────────────────────────────────────────────────────────
@@ -647,6 +647,13 @@ pub fn run() {
             use tauri::menu::{MenuBuilder, MenuItemBuilder};
             use tauri::tray::TrayIconBuilder;
             use tauri::Manager;
+
+            // Guard: use a static flag to ensure only one tray icon is ever created,
+            // even if setup() is called multiple times (e.g. after close/reopen cycles).
+            static TRAY_CREATED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+            if TRAY_CREATED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                return Ok(());
+            }
 
             // Build tray menu
             let show_hide = MenuItemBuilder::with_id("show_hide", "👁️ Show / Hide Window").build(app)?;

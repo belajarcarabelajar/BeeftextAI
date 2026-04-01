@@ -1027,6 +1027,23 @@ body {
   border-color: rgba(99, 102, 241, 0.4);
 }
 
+.var-select {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--accent-secondary);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  height: 26px;
+}
+
+.var-select:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
 /* ── Toggle Button ── */
 .toggle-btn {
   background: none;

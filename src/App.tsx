@@ -607,9 +607,38 @@ function SnippetModal({ snippet, groups, onClose, onSave, showToast }: {
               <label className="input-label">Snippet Text {contentType === "Both" && <span style={{ color: "var(--text-tertiary)" }}>(pasted first)</span>}</label>
               <div className="variable-toolbar">
                 <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginRight: 6 }}>Insert:</span>
-                {["#{clipboard}", "#{date}", "#{time}", "#{input:}", "#{combo:}", "#{ai:}"].map(v => (
-                  <button key={v} className="var-btn" onClick={() => insertVariable(v)} title={v}>{v.replace("#{", "").replace("}", "")}</button>
-                ))}
+                <select
+                  className="var-select"
+                  onChange={e => { if (e.target.value) { insertVariable(e.target.value); e.target.value = ""; } }}
+                  value=""
+                  title="Insert variable"
+                >
+                  <option value="">— Variable —</option>
+                  {[
+                    ["#{clipboard}", "#{clipboard}"],
+                    ["#{date}", "#{date}"],
+                    ["#{time}", "#{time}"],
+                    ["#{dateTime:}", "#{dateTime:format}"],
+                    ["#{date:}", "#{date:format}"],
+                    ["#{time:}", "#{time:format}"],
+                    ["#{envVar:}", "#{envVar:name}"],
+                    ["#{cursor}", "#{cursor}"],
+                    ["#{input:}", "#{input:description}"],
+                    ["#{combo:}", "#{combo:keyword}"],
+                    ["#{upper:}", "#{upper:text}"],
+                    ["#{lower:}", "#{lower:text}"],
+                    ["#{trim:}", "#{trim:text}"],
+                    ["#{ai:}", "#{ai:prompt}"],
+                    ["#{key:}", "#{key:keyname}"],
+                    ["#{key::2}", "#{key:keyname:count}"],
+                    ["#{shortcut:}", "#{shortcut:mod+key}"],
+                    ["#{delay:}", "#{delay:ms}"],
+                    ["#{powershell:}", "#{powershell:path}"],
+                    ["#{powershell::10000}", "#{powershell:path:timeoutMs}"],
+                  ].map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
               </div>
               <textarea className="textarea" placeholder="The text that replaces the keyword..." value={text} onChange={e => setText(e.target.value)} rows={5} style={{ fontFamily: "var(--font-mono)", fontSize: 13 }} />
             </div>
@@ -1566,12 +1595,24 @@ function SettingsPage({ showToast, ollamaOnline, onLanguageChange }: { showToast
             <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{clipboard}"}</code> Current clipboard content<br/>
             <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{date}"}</code> Current date (YYYY-MM-DD)<br/>
             <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{time}"}</code> Current time (HH:MM:SS)<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{dateTime:format}"}</code> Custom date/time format<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{dateTime:format}"}</code> Custom date/time (e.g. yyyy-MM-dd HH:mm:ss)<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{dateTime:+1d:format}"}</code> Date with offset (e.g. +1d-2h)<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{date:format}"}</code> Custom date format<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{time:format}"}</code> Custom time format<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{cursor}"}</code> Cursor position after paste<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{input:description}"}</code> Interactive text input dialog<br/>
             <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{combo:keyword}"}</code> Insert another snippet<br/>
             <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{envVar:name}"}</code> Environment variable<br/>
             <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{ai:prompt}"}</code> Generate text via Ollama AI<br/>
             <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{upper:text}"}</code> Uppercase<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{lower:text}"}</code> Lowercase
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{lower:text}"}</code> Lowercase<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{trim:text}"}</code> Trim whitespace<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{key:keyname}"}</code> Simulate key press (e.g. tab, enter, up)<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{key:keyname:count}"}</code> Repeat key N times<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{shortcut:mod+key}"}</code> Simulate shortcut (e.g. Ctrl+Shift+J)<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{delay:ms}"}</code> Pause during expansion (milliseconds)<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{powershell:path}"}</code> Execute PowerShell script<br/>
+            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{powershell:path:timeoutMs}"}</code> Script with timeout (0=indefinite)
           </div>
         </div>
         <div className="settings-section">

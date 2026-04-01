@@ -178,24 +178,80 @@ pub fn inject_both(text: &str, base64_image: &str) {
     inject_image(base64_image);
 }
 
+/// Simulate pressing Left arrow key N times to move cursor left
+pub fn move_cursor_left(count: usize) {
+    for _ in 0..count {
+        simulate_key_press(rdev::Key::LeftArrow);
+        thread::sleep(Duration::from_millis(2));
+    }
+    thread::sleep(Duration::from_millis(5));
+}
+
+/// Simulate pressing Right arrow key N times to move cursor right
+pub fn move_cursor_right(count: usize) {
+    for _ in 0..count {
+        simulate_key_press(rdev::Key::RightArrow);
+        thread::sleep(Duration::from_millis(2));
+    }
+    thread::sleep(Duration::from_millis(5));
+}
+
+/// Inject text with cursor positioned at a specific offset from the end.
+/// negative_offset: move cursor left from end (e.g., -6 means move 6 chars left from end)
+pub fn inject_text_with_cursor(text: &str, negative_offset: i32) {
+    if negative_offset == 0 {
+        inject_text(text);
+        return;
+    }
+
+    // Phase 1: Paste the full text
+    inject_text(text);
+
+    // Phase 2: Move cursor to desired position
+    let move_count = negative_offset.unsigned_abs() as usize;
+    if negative_offset < 0 {
+        move_cursor_left(move_count);
+    } else {
+        move_cursor_right(move_count);
+    }
+}
+
 /// Simulate a single key press and release
-fn simulate_key_press(key: rdev::Key) {
+pub fn simulate_key_press(key: rdev::Key) {
     let _ = rdev::simulate(&rdev::EventType::KeyPress(key));
-    // Reduced from 5ms to 1ms
     thread::sleep(Duration::from_millis(1));
     let _ = rdev::simulate(&rdev::EventType::KeyRelease(key));
 }
 
 /// Simulate a key combo (modifier + key)
-fn simulate_key_combo(modifier: rdev::Key, key: rdev::Key) {
+pub fn simulate_key_combo(modifier: rdev::Key, key: rdev::Key) {
     let _ = rdev::simulate(&rdev::EventType::KeyPress(modifier));
-    // Reduced from 10ms to 2ms
     thread::sleep(Duration::from_millis(2));
     let _ = rdev::simulate(&rdev::EventType::KeyPress(key));
-    // Reduced from 10ms to 2ms
     thread::sleep(Duration::from_millis(2));
     let _ = rdev::simulate(&rdev::EventType::KeyRelease(key));
-    // Reduced from 10ms to 2ms
     thread::sleep(Duration::from_millis(2));
     let _ = rdev::simulate(&rdev::EventType::KeyRelease(modifier));
+}
+
+/// Simulate a multi-modifier shortcut (e.g. Ctrl+Shift+J)
+/// Presses all modifiers simultaneously, then the key, then releases in reverse order
+pub fn simulate_shortcut(modifiers: &[rdev::Key], key: rdev::Key) {
+    // Press all modifiers
+    for m in modifiers {
+        let _ = rdev::simulate(&rdev::EventType::KeyPress(*m));
+        thread::sleep(Duration::from_millis(1));
+    }
+    thread::sleep(Duration::from_millis(2));
+    // Press key
+    let _ = rdev::simulate(&rdev::EventType::KeyPress(key));
+    thread::sleep(Duration::from_millis(2));
+    // Release key
+    let _ = rdev::simulate(&rdev::EventType::KeyRelease(key));
+    thread::sleep(Duration::from_millis(2));
+    // Release modifiers in reverse order
+    for m in modifiers.iter().rev() {
+        let _ = rdev::simulate(&rdev::EventType::KeyRelease(*m));
+        thread::sleep(Duration::from_millis(1));
+    }
 }
