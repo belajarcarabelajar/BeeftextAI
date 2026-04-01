@@ -1,11 +1,11 @@
 {
-  "version": "0.2.8",
-  "notes": "## New Features\n- **Image Attachment via Drag & Drop**: Drag and drop images directly into the AI Chat area\n- **Image Attachment via Paste**: Press Ctrl+V to paste images from clipboard in AI Chat\n- **Visual Feedback**: Green overlay appears when dragging images over the chat\n\n## Bug Fixes\n- **Image Data URL Prefix Strip**: Fixed a critical bug where image snippets weren't pasting because `inject_image()` tried to base64-decode the full data URL string (`data:image/png;base64,...`) instead of just the base64 portion. Images now paste correctly in Telegram, WhatsApp, and other apps.\n- **Snippet Editor Image Preview**: Fixed image preview not showing when editing existing image snippets\n- **OmniSearch Embedding Accuracy**: Increased embed token limit from 1024 to 4096, improved token estimation for multilingual text, added proper error logging for embedding failures, and added query truncation before embedding\n\n## Previous\n- v0.2.7: Database migration fix for existing users\n- v0.2.6: Image snippet support (Text/Image/Both content types)",
-  "pub_date": "2026-04-01T15:35:00Z",
+  "version": "0.2.9",
+  "notes": "## Bug Fixes\n- **Cheat Sheet**: Fixed not working (was using blob URL which fails in Tauri WebView)\n- **Export JSON/CSV**: Now shows native save dialog and confirms file location\n- **Import from Beeftext**: File filter changed to 'All Files' (was only .json)\n- **Delete All Snippets**: Fixed silently failing (was calling non-existent command)",
+  "pub_date": "2026-04-01T16:30:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3FySXdzMy9ZdDN5RjJBZHF1UVhhbkdXUGYrMmt5QlprUTZVaFJLc3NNSkhIaXVQQWtITVZiVmg2bSswanBWSHBkcFVyS1Ntc0RhRzAyYUZ1elhHTlF3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MDMxOTYzCWZpbGU6QmVlZlRleHQgQUlfMC4yLjhfeDY0LXNldHVwLmV4ZQpYSVBUZ3NuK09aOEtOQk91SEFncS9VSnNFWlE0WE45cGdCTCtyTzh1V0dLL3pvNWdPaTUrSXdib1d0N2JQNDR2S1c4U0taV1VlV0RVZWkvS0l6dXRBZz09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.8/BeefText.AI_0.2.8_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3VyODdrREN1dXorRVE1cUZpU1VlNFdlOGo0NytNb2xkaGJYRkJsRzd1ZTh5RkZML29rUzFxUjV2OEYyYUFyMjEzUkp2RllMVVZZMkNTVnRRRkdNdGdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MDM1NTU3CWZpbGU6QmVlZlRleHQgQUlfMC4yLjlfeDY0LXNldHVwLmV4ZQpmeTQrdmNSL3Nad3BBS3lldURKQVFKNXkrMXZwMndaQVcxaUlzZi9DTnVaYUNOb3NVK3dtdGFTVTV0cmpEZGdQLzRqN2kzTW1Zejl1ejBuQ3hDL2NDQT09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.2.9/BeefText.AI_0.2.9_x64-setup.exe"
     }
   }
 }

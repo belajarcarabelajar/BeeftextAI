@@ -4,6 +4,8 @@ import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
+import { save, open } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useTranslation, Language } from "./i18n";
 import { getPreferredTheme, setTheme, toggleTheme, getStoredTheme, initTheme, Theme } from "./theme";
 
@@ -267,35 +269,49 @@ function SnippetsPage({ showToast, showForm, setShowForm, editingSnippet, setEdi
 
   const handleExportJson = async () => {
     try {
+      const path = await save({
+        filters: [{ name: "JSON", extensions: ["json"] }],
+        defaultPath: "beeftextai-export.json",
+      });
+      if (!path) return;
       const json = await invoke<string>("export_json");
-      downloadFile("beeftextai-export.json", json, "application/json");
-      showToast("Exported as JSON");
+      await writeTextFile(path, json);
+      showToast(`Saved to ${path}`);
     } catch (e) { showToast(String(e), "error"); }
   };
 
   const handleExportCsv = async () => {
     try {
+      const path = await save({
+        filters: [{ name: "CSV", extensions: ["csv"] }],
+        defaultPath: "beeftextai-export.csv",
+      });
+      if (!path) return;
       const csv = await invoke<string>("export_csv");
-      downloadFile("beeftextai-export.csv", csv, "text/csv");
-      showToast("Exported as CSV");
+      await writeTextFile(path, csv);
+      showToast(`Saved to ${path}`);
     } catch (e) { showToast(String(e), "error"); }
   };
 
   const handleCheatSheet = async () => {
     try {
+      const path = await save({
+        filters: [{ name: "HTML", extensions: ["html"] }],
+        defaultPath: "cheat-sheet.html",
+      });
+      if (!path) return;
       const html = await invoke<string>("generate_cheat_sheet");
-      const blob = new Blob([html], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
-      showToast("Cheat sheet generated");
+      await writeTextFile(path, html);
+      await open(path);
+      showToast(`Saved to ${path}`);
     } catch (e) { showToast(String(e), "error"); }
   };
 
   const handleDeleteAll = async () => {
     if (!window.confirm("Are you sure you want to delete ALL snippets? This cannot be undone.")) return;
     try {
-      const count = await invoke<number>("delete_all_snippets_cmd");
-      showToast(`Deleted ${count} snippet(s)`);
+      await invoke("clear_all_data");
+      showToast("All snippets deleted");
       load();
     } catch (e) { showToast(String(e), "error"); }
   };
@@ -770,13 +786,13 @@ function ImportModal({ onClose, onImport, showToast }: {
           {!result ? (
             <>
               <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 16 }}>
-                Select your Beeftext JSON file (usually <code style={{ color: "var(--accent-secondary)", fontSize: 12 }}>comboList.json</code> from <code style={{ color: "var(--accent-secondary)", fontSize: 12 }}>%AppData%\Beeftext\</code>)
+                Select your Beeftext backup file (usually <code style={{ color: "var(--accent-secondary)", fontSize: 12 }}>comboList.json</code> from <code style={{ color: "var(--accent-secondary)", fontSize: 12 }}>%AppData%\Beeftext\</code>)
               </p>
               <label className="file-upload-label">
-                <input type="file" accept=".json" onChange={handleFile} style={{ display: "none" }} />
+                <input type="file" accept="*" onChange={handleFile} style={{ display: "none" }} />
                 <div className="file-upload-area">
                   {importing ? <span className="spinner" /> : "📂"}
-                  <span>{importing ? "Importing..." : "Click to select JSON file"}</span>
+                  <span>{importing ? "Importing..." : "Click to select file"}</span>
                 </div>
               </label>
             </>
@@ -1557,14 +1573,4 @@ function UpdateChecker({ showToast }: { showToast: (m: string, t?: "success" | "
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function downloadFile(filename: string, content: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
