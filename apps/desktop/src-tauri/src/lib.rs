@@ -643,6 +643,9 @@ pub fn run() {
         eprintln!("Failed to initialize database: {}", e);
     }
 
+    // H6: Start write-behind thread for non-blocking last_used_at updates
+    store::start_last_used_writer();
+
     // Auto-start keyboard hook
     trigger::ensure_worker_running();
     trigger::set_keyboard_state(Arc::clone(&KEYBOARD));
@@ -720,7 +723,8 @@ pub fn run() {
                             }
                         }
                         "quit" => {
-                            std::process::exit(0);
+                            // L6: Graceful shutdown — allows Tauri cleanup and SQLite WAL flush
+                            app.exit(0);
                         }
                         _ => {}
                     }

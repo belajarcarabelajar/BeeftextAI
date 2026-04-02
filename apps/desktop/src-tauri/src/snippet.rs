@@ -107,9 +107,37 @@ impl Snippet {
                 matches
             }
             MatchingMode::Loose => {
-                match self.case_sensitivity {
-                    CaseSensitivity::CaseSensitive => input.contains(&self.keyword),
-                    CaseSensitivity::CaseInsensitive => input.to_lowercase().contains(&self.keyword.to_lowercase()),
+                // M4 fix: Require the keyword to be surrounded by word boundaries
+                // to prevent mid-word triggers (e.g. "there" triggering keyword "the").
+                let kw = match self.case_sensitivity {
+                    CaseSensitivity::CaseSensitive => self.keyword.clone(),
+                    CaseSensitivity::CaseInsensitive => self.keyword.to_lowercase(),
+                };
+                let haystack = match self.case_sensitivity {
+                    CaseSensitivity::CaseSensitive => input.to_string(),
+                    CaseSensitivity::CaseInsensitive => input.to_lowercase(),
+                };
+                // Find last occurrence in the buffer
+                if let Some(byte_pos) = haystack.rfind(&kw as &str) {
+                    let kw_char_count = kw.chars().count();
+                    let before: Vec<char> = haystack[..byte_pos].chars().collect();
+                    let after: Vec<char> = haystack[byte_pos + kw.len()..].chars().collect();
+                    // Word boundary before
+                    if let Some(&prev_char) = before.last() {
+                        if prev_char.is_alphanumeric() {
+                            return false;
+                        }
+                    }
+                    // Word boundary after
+                    if let Some(&next_char) = after.first() {
+                        if next_char.is_alphanumeric() {
+                            return false;
+                        }
+                    }
+                    let _ = kw_char_count;
+                    true
+                } else {
+                    false
                 }
             }
         }
@@ -150,6 +178,9 @@ mod tests {
         snippet.matching_mode = MatchingMode::Loose;
         
         assert!(snippet.matches_input("I will brb shortly"));
-        assert!(snippet.matches_input("wordbrbword"));
+        // M4 fix: mid-word should NOT match anymore
+        assert!(!snippet.matches_input("wordbrbword"));
+        // Word boundary with punctuation is OK
+        assert!(snippet.matches_input("I'll brb, ok?"));
     }
 }
