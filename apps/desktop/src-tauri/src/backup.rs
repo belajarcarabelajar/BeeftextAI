@@ -44,7 +44,7 @@ pub fn create_backup() -> Result<BackupInfo, String> {
     let data = BackupData {
         version: "1.0".to_string(),
         created_at: Utc::now().to_rfc3339(),
-        app_version: "0.1.0".to_string(),
+        app_version: env!("CARGO_PKG_VERSION").to_string(),
         snippets: snippets.clone(),
         groups: groups.clone(),
         preferences: prefs,
@@ -97,6 +97,9 @@ pub fn list_backups() -> Result<Vec<BackupInfo>, String> {
 
 /// Restore from a backup file
 pub fn restore_backup(filename: &str) -> Result<(usize, usize), String> {
+    if filename.contains("..") {
+        return Err("Invalid filename".to_string());
+    }
     let path = backup_dir().join(filename);
     let content = fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read backup: {}", e))?;

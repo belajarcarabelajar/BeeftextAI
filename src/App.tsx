@@ -1,59 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { check } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
-import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
 import { save, open as openPicker } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { writeTextFile, readFile } from "@tauri-apps/plugin-fs";
 import { useTranslation, Language } from "./i18n";
 import { getPreferredTheme, setTheme, toggleTheme, getStoredTheme, initTheme, Theme } from "./theme";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Snippet {
-  uuid: string;
-  name: string;
-  keyword: string;
-  snippet: string;
-  description: string;
-  matching_mode: "Strict" | "Loose";
-  case_sensitivity: "CaseSensitive" | "CaseInsensitive";
-  group_id: string | null;
-  enabled: boolean;
-  created_at: string;
-  modified_at: string;
-  last_used_at: string | null;
-  ai_generated: boolean;
-  image_data: string | null;
-  content_type: "Text" | "Image" | "Both";
-}
-
-interface Group {
-  uuid: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  created_at: string;
-  modified_at: string;
-}
-
-interface ImportResult {
-  snippets_imported: number;
-  groups_imported: number;
-  errors: string[];
-}
-
-interface BackupInfo {
-  filename: string;
-  created_at: string;
-  snippet_count: number;
-  group_count: number;
-  size_bytes: number;
-}
-
-type Page = "snippets" | "chat" | "search" | "settings";
+import { Snippet, Group, Page } from "./types";
+import { estimateTokenCount, truncateToTokens } from "./utils";
+import SnippetEditor from "./components/SnippetEditor";
+import SettingsPanel from "./components/SettingsPanel";
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
@@ -107,13 +63,13 @@ export default function App() {
     } else if (msgOrErr && typeof msgOrErr === "object") {
       try { msg = JSON.stringify(msgOrErr); } catch { /* ignore */ }
     }
-    
+
     if (type === "error") {
       console.error("BeefText Error UI:", msgOrErr);
       if (msg === "[object Object]") msg = "An unexpected error occurred (see console).";
       if (!msg || msg.trim() === "") msg = "Unknown error occurred.";
     }
-    
+
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   }, []);
@@ -187,7 +143,7 @@ export default function App() {
         {page === "snippets" && <SnippetsPage showToast={showToast} showForm={showForm} setShowForm={setShowForm} editingSnippet={editingSnippet} setEditingSnippet={setEditingSnippet} />}
         {page === "chat" && <ChatPage showToast={showToast} ollamaOnline={ollamaOnline} />}
         {page === "search" && <SearchPage showToast={showToast} ollamaOnline={ollamaOnline} onEditSnippet={(s) => { setEditingSnippet(s); setShowForm(true); setPage("snippets"); }} />}
-        {page === "settings" && <SettingsPage showToast={showToast} ollamaOnline={ollamaOnline} onLanguageChange={setLang} />}
+        {page === "settings" && <SettingsPanel showToast={showToast} ollamaOnline={ollamaOnline} onLanguageChange={setLang} />}
       </main>
 
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
@@ -436,9 +392,9 @@ function SnippetsPage({ showToast, showForm, setShowForm, editingSnippet, setEdi
       </div>
 
       {showForm && (
-        <SnippetModal snippet={editingSnippet} groups={groups} onClose={() => setShowForm(false)}
+        <SnippetEditor snippet={editingSnippet} groups={groups} onClose={() => setShowForm(false)}
           onSave={() => { setShowForm(false); load(); showToast(editingSnippet ? "Snippet updated" : "Snippet created"); }}
-          showToast={showToast} />
+          showToast={showToast} t={t} />
       )}
 
       {showGroupForm && (
@@ -488,255 +444,6 @@ function DropdownMenu({ items }: { items: DropdownItem[] }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Snippet Modal ────────────────────────────────────────────────────────────
-
-function SnippetModal({ snippet, groups, onClose, onSave, showToast }: {
-  snippet: Snippet | null; groups: Group[]; onClose: () => void; onSave: () => void;
-  showToast: (m: string, t?: "success" | "error") => void;
-}) {
-  const [keyword, setKeyword] = useState(snippet?.keyword || "");
-  const [name, setName] = useState(snippet?.name || "");
-  const [text, setText] = useState(snippet?.snippet || "");
-  const [desc, setDesc] = useState(snippet?.description || "");
-  const [groupId, setGroupId] = useState<string | null>(snippet?.group_id || null);
-  const [matchingMode, setMatchingMode] = useState<"Strict" | "Loose">(snippet?.matching_mode || "Strict");
-  const [caseSensitivity, setCaseSensitivity] = useState<"CaseSensitive" | "CaseInsensitive">(snippet?.case_sensitivity || "CaseSensitive");
-  const [contentType, setContentType] = useState<"Text" | "Image" | "Both">(snippet?.content_type || "Text");
-  const [imageData, setImageData] = useState<string | null>(snippet?.image_data || null);
-  const [imagePreview, setImagePreview] = useState<string | null>(snippet?.image_data || null);
-  const [saving, setSaving] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const insertVariable = (v: string) => {
-    const ta = textareaRef.current;
-    if (!ta) {
-      setText(prev => prev + v);
-      return;
-    }
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    const before = text.slice(0, start);
-    const after = text.slice(end);
-    setText(before + v + after);
-    // Restore focus and cursor position after React re-render
-    requestAnimationFrame(() => {
-      ta.focus();
-      const newPos = start + v.length;
-      ta.setSelectionRange(newPos, newPos);
-    });
-  };
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
-      setImageData(result);
-      setImagePreview(result);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveImage = () => {
-    setImageData(null);
-    setImagePreview(null);
-  };
-
-  // Validate: text required for Text and Both types
-  const isTextRequired = contentType === "Text" || contentType === "Both";
-  const isImageRequired = contentType === "Image" || contentType === "Both";
-
-  const handleSave = async () => {
-    if (!keyword.trim()) { showToast("Keyword is required", "error"); return; }
-    if (isTextRequired && !text.trim()) { showToast("Snippet text is required for Text and Both types", "error"); return; }
-    if (contentType !== "Text" && !imageData) { showToast("Please select an image", "error"); return; }
-
-    // Check for duplicate keyword
-    try {
-      const allSnippets = await invoke<Snippet[]>("get_snippets");
-      const isDuplicate = allSnippets.some(s => s.keyword === keyword.trim() && s.uuid !== snippet?.uuid);
-      if (isDuplicate) {
-        if (!window.confirm(`Apakah kamu yakin? Keyword '${keyword.trim()}' sudah pernah digunakan untuk snippet lainnya.`)) {
-          return;
-        }
-      }
-    } catch (e) { console.error(e); }
-
-    setSaving(true);
-    try {
-      if (snippet) {
-        await invoke("update_snippet_cmd", {
-          s: { ...snippet, keyword: keyword.trim(), name, snippet: text, description: desc, group_id: groupId, matching_mode: matchingMode, case_sensitivity: caseSensitivity, modified_at: new Date().toISOString(), content_type: contentType },
-          imageData,
-        });
-      } else {
-        await invoke("add_snippet", { keyword: keyword.trim(), snippetText: text, name, description: desc, groupId, aiGenerated: false, imageData, contentType });
-      }
-      onSave();
-    } catch (e) { showToast(String(e), "error"); }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 650 }} onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{snippet ? "✏️ Edit Snippet" : "✨ New Snippet"}</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="modal-body">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div className="input-group">
-              <label className="input-label">Keyword (Trigger)</label>
-              <input className="input" placeholder="e.g. //email" value={keyword} onChange={e => setKeyword(e.target.value)} style={{ fontFamily: "var(--font-mono)" }} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Name</label>
-              <input className="input" placeholder="e.g. Formal Email" value={name} onChange={e => setName(e.target.value)} />
-            </div>
-          </div>
-
-          {/* Content Type Toggle */}
-          <div className="input-group">
-            <label className="input-label">Content Type</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              {(["Text", "Image", "Both"] as const).map(ct => (
-                <button key={ct}
-                  className={`btn ${contentType === ct ? "btn-primary" : "btn-secondary"}`}
-                  onClick={() => setContentType(ct)}
-                  style={{ flex: 1, fontSize: 13 }}
-                >
-                  {ct === "Text" ? "📝 Text" : ct === "Image" ? "🖼️ Image" : "📝🖼️ Both"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Text Input — shown for Text and Both */}
-          {(contentType === "Text" || contentType === "Both") && (
-            <div className="input-group">
-              <label className="input-label">Snippet Text {contentType === "Both" && <span style={{ color: "var(--text-tertiary)" }}>(pasted first)</span>}</label>
-              <div className="variable-toolbar">
-                <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginRight: 6 }}>Insert:</span>
-                <select
-                  className="var-select"
-                  onChange={e => { if (e.target.value) { insertVariable(e.target.value); e.target.value = ""; } }}
-                  value=""
-                  title="Insert variable"
-                >
-                  <option value="">— Variable —</option>
-                  {[
-                    ["#{clipboard}", "#{clipboard}"],
-                    ["#{date}", "#{date}"],
-                    ["#{time}", "#{time}"],
-                    ["#{dateTime:}", "#{dateTime:format}"],
-                    ["#{date:}", "#{date:format}"],
-                    ["#{time:}", "#{time:format}"],
-                    ["#{envVar:}", "#{envVar:name}"],
-                    ["#{cursor}", "#{cursor}"],
-                    ["#{input:}", "#{input:description}"],
-                    ["#{combo:}", "#{combo:keyword}"],
-                    ["#{upper:}", "#{upper:text}"],
-                    ["#{lower:}", "#{lower:text}"],
-                    ["#{trim:}", "#{trim:text}"],
-                    ["#{ai:}", "#{ai:prompt}"],
-                    ["#{key:}", "#{key:keyname}"],
-                    ["#{key::2}", "#{key:keyname:count}"],
-                    ["#{shortcut:}", "#{shortcut:mod+key}"],
-                    ["#{delay:}", "#{delay:ms}"],
-                    ["#{powershell:}", "#{powershell:path}"],
-                    ["#{powershell::10000}", "#{powershell:path:timeoutMs}"],
-                  ].map(([val, label]) => (
-                    <option key={val} value={val}>{label}</option>
-                  ))}
-                </select>
-              </div>
-              <textarea ref={textareaRef} className="textarea" placeholder="The text that replaces the keyword..." value={text} onChange={e => setText(e.target.value)} rows={5} style={{ fontFamily: "var(--font-mono)", fontSize: 13 }} />
-            </div>
-          )}
-
-          {/* Image Input — shown for Image and Both */}
-          {contentType === "Image" && (
-            <div className="input-group">
-              <label className="input-label">Image</label>
-              <input className="input" type="file" accept="image/*" onChange={handleImageSelect} />
-              {imagePreview && (
-                <div style={{ marginTop: 8, position: "relative", display: "inline-block" }}>
-                  <img src={imagePreview} alt="Preview" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 6, border: "1px solid var(--border)" }} />
-                  <button className="btn btn-danger" onClick={handleRemoveImage} style={{ marginTop: 6 }}>Remove Image</button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Image + Text Together — shown for Both */}
-          {contentType === "Both" && (
-            <div className="input-group">
-              <label className="input-label">Image <span style={{ color: "var(--text-tertiary)" }}>(pasted after text, ~150ms delay)</span></label>
-              <input className="input" type="file" accept="image/*" onChange={handleImageSelect} />
-              {imagePreview && (
-                <div style={{ marginTop: 8, position: "relative", display: "inline-block" }}>
-                  <img src={imagePreview} alt="Preview" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 6, border: "1px solid var(--border)" }} />
-                  <button className="btn btn-danger" onClick={handleRemoveImage} style={{ marginTop: 6 }}>Remove Image</button>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="input-group">
-            <label className="input-label">Description</label>
-            <input className="input" placeholder="Optional description" value={desc} onChange={e => setDesc(e.target.value)} />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-            <div className="input-group">
-              <label className="input-label">Group</label>
-              <select className="input" value={groupId || ""} onChange={e => setGroupId(e.target.value || null)}>
-                <option value="">No Group</option>
-                {groups.map(g => <option key={g.uuid} value={g.uuid}>{g.name}</option>)}
-              </select>
-            </div>
-            <div className="input-group">
-              <label className="input-label">Matching Mode</label>
-              <select className="input" value={matchingMode} onChange={e => setMatchingMode(e.target.value as any)}>
-                <option value="Strict">Strict</option>
-                <option value="Loose">Loose</option>
-              </select>
-            </div>
-            <div className="input-group">
-              <label className="input-label">Case Sensitivity</label>
-              <select className="input" value={caseSensitivity} onChange={e => setCaseSensitivity(e.target.value as any)}>
-                <option value="CaseSensitive">Case Sensitive</option>
-                <option value="CaseInsensitive">Case Insensitive</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div className="modal-footer">
-          {snippet && (
-            <button className="btn btn-danger" onClick={async () => {
-              if (!window.confirm("Are you sure you want to delete this snippet?")) return;
-              try {
-                await invoke("delete_snippet_cmd", { uuid: snippet.uuid });
-                onSave();
-              } catch (e) { showToast(String(e), "error"); }
-            }}>
-              🗑 Delete
-            </button>
-          )}
-          <div style={{ flex: 1 }} />
-          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? <span className="spinner" /> : null}
-            {snippet ? "Save Changes" : "Create Snippet"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -869,32 +576,6 @@ function ImportModal({ onClose, onImport, showToast }: {
       </div>
     </div>
   );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Chat Token Utilities
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/** Estimate token count using word-based approximation (same method as Rust backend) */
-function estimateTokenCount(text: string): number {
-  if (!text.trim()) return 0;
-  const words = text.trim().split(/\s+/).length;
-  // Word-based: words * 1.5 ≈ tokens
-  const wordBased = Math.round((words * 3) / 2);
-  // Char-based: chars / 4
-  const charBased = Math.ceil(text.length / 4);
-  return Math.max(wordBased, charBased);
-}
-
-/** Truncate text to approximately maxTokens */
-function truncateToTokens(text: string, maxTokens: number): string {
-  if (maxTokens <= 0) return "";
-  if (estimateTokenCount(text) <= maxTokens) return text;
-  // Take ~maxTokens * 4 chars, then cut to word boundary
-  let result = text.slice(0, maxTokens * 4);
-  const lastSpace = result.lastIndexOf(' ');
-  if (lastSpace > 0) result = result.slice(0, lastSpace);
-  return result;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1062,9 +743,6 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
     const userMsg = rawMsg ? truncateToTokens(rawMsg, MAX_INPUT_TOKENS) : "";
     const tokens = userMsg ? estimateTokenCount(userMsg) : 0;
     const wasTruncated = userMsg.length < rawMsg.length;
-    if (userMsg) {
-      console.log(`[TOKEN] sendMessage | chars: ${userMsg.length} | tokens: ~${tokens}${wasTruncated ? ` | truncated from ${rawMsg.length} chars` : ''}`);
-    }
     setInput("");
     // Add user message + keep only last 10 messages to reduce backend load
     setMessages(prev => {
@@ -1191,7 +869,7 @@ function MessageContent({ content, showToast }: { content: string; showToast: (m
         const allSnippets = await invoke<Snippet[]>("get_snippets");
         const isDuplicate = allSnippets.some(s => s.keyword === generatedKeyword);
         if (isDuplicate) {
-          if (!window.confirm(`Apakah kamu yakin? Keyword '${generatedKeyword}' sudah pernah digunakan untuk snippet lainnya.`)) {
+          if (!window.confirm(t("confirmKeywordDuplicate", generatedKeyword))) {
             return;
           }
         }
@@ -1335,359 +1013,3 @@ function SearchPage({ showToast, ollamaOnline, onEditSnippet }: { showToast: (m:
     </>
   );
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Settings Page
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function SettingsPage({ showToast, ollamaOnline, onLanguageChange }: { showToast: (m: string, t?: "success" | "error") => void; ollamaOnline: boolean; onLanguageChange: (lang: Language) => void }) {
-  const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
-  const [textModel, setTextModel] = useState("nemotron-3-super:cloud");
-  const [embedModel, setEmbedModel] = useState("nomic-embed-text");
-  const [language, setLanguage] = useState("both");
-  const [appVersion, setAppVersion] = useState("...");
-  const [models, setModels] = useState<{ name: string }[]>([]);
-  const [hookActive, setHookActive] = useState(true);
-  const [snippetCount, setSnippetCount] = useState(0);
-  const [groupCount, setGroupCount] = useState(0);
-  const [aiCount, setAiCount] = useState(0);
-  const [embedCount, setEmbedCount] = useState(0);
-  const [backups, setBackups] = useState<BackupInfo[]>([]);
-  const [backingUp, setBackingUp] = useState(false);
-  const [rebedding, setRebedding] = useState(false);
-  const [embedProgress, setEmbedProgress] = useState<{ current: number; total: number; percentage: number } | null>(null);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-
-  const loadData = useCallback(async () => {
-    invoke<string | null>("get_preference", { key: "ollama_url" }).then(v => v && setOllamaUrl(v));
-    invoke<string | null>("get_preference", { key: "text_model" }).then(v => v && setTextModel(v));
-    invoke<string | null>("get_preference", { key: "embed_model" }).then(v => v && setEmbedModel(v));
-    invoke<string | null>("get_preference", { key: "language" }).then(v => v && setLanguage(v));
-    invoke<{ name: string }[]>("ollama_models").then(setModels).catch(() => {});
-    invoke<boolean>("is_keyboard_hook_active").then(setHookActive).catch(() => {});
-    invoke<boolean>("is_notifications_enabled").then(setNotificationsEnabled).catch(() => {});
-    invoke<[number, number, number, number]>("get_snippet_stats").then(([t, _e, ai, emb]) => {
-      setSnippetCount(t); setAiCount(ai); setEmbedCount(emb);
-    }).catch(() => {});
-    invoke<Group[]>("get_groups").then(g => setGroupCount(g.length)).catch(() => {});
-    invoke<BackupInfo[]>("list_backups").then(setBackups).catch(() => {});
-    getVersion().then(v => setAppVersion("v" + v)).catch(console.error);
-
-    const unlisten = listen<{ current: number; total: number; percentage: number }>("embed_progress", (event) => {
-      setEmbedProgress(event.payload);
-    });
-
-    return () => {
-      unlisten.then(f => f());
-    };
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const handleSave = async () => {
-    try {
-      await invoke("set_preference", { key: "ollama_url", value: ollamaUrl });
-      await invoke("set_preference", { key: "text_model", value: textModel });
-      await invoke("set_preference", { key: "embed_model", value: embedModel });
-      await invoke("set_preference", { key: "language", value: language });
-      showToast("Settings saved");
-    } catch (e) { showToast(String(e), "error"); }
-  };
-
-  const handleToggleHook = async () => {
-    try {
-      const newState = await invoke<boolean>("toggle_keyboard_hook", { enabled: !hookActive });
-      setHookActive(newState);
-      showToast(newState ? "✅ Text Expander enabled" : "⏸ Text Expander paused");
-    } catch (e) { showToast(String(e), "error"); }
-  };
-
-  const handleToggleNotifications = async () => {
-    try {
-      const newState = await invoke<boolean>("toggle_notifications", { enabled: !notificationsEnabled });
-      setNotificationsEnabled(newState);
-      showToast(newState ? "🔔 Notifications enabled" : "🔕 Notifications disabled");
-    } catch (e) { showToast(String(e), "error"); }
-  };
-
-  const handleCreateBackup = async () => {
-    setBackingUp(true);
-    try {
-      const info = await invoke<BackupInfo>("create_backup");
-      showToast(`✅ Backup created: ${info.snippet_count} snippets, ${info.group_count} groups`);
-      loadData();
-    } catch (e) { showToast(String(e), "error"); }
-    finally { setBackingUp(false); }
-  };
-
-  const handleReEmbed = async (resume: boolean = false) => {
-    setRebedding(true);
-    setEmbedProgress(null);
-    showToast(resume ? "Resuming embedding process..." : "Starting fresh embedding process...");
-    try {
-      const result = await invoke<{ successful: number; failed: number; failures: { uuid: string; name: string; reason: string }[] }>("force_re_embed_all", { resume });
-      if (result.failed > 0) {
-        // Truncate long failure lists, show first 5 with count of remaining
-        const displayFailures = result.failures.slice(0, 5);
-        const remaining = result.failures.length - displayFailures.length;
-        const failureList = displayFailures.map(f => `• ${f.name}: ${f.reason}`).join("\n");
-        const suffix = remaining > 0 ? `\n\n...and ${remaining} more (check console)` : "";
-        showToast(`⚠️ ${result.successful} embedded, ${result.failed} failed. Check console for details.`, "error");
-      } else {
-        showToast(`✅ Success! ${result.successful} snippets embedded.`);
-      }
-      loadData();
-    } catch (e) { showToast(String(e), "error"); }
-    finally {
-      setRebedding(false);
-      setTimeout(() => setEmbedProgress(null), 3000);
-    }
-  };
-
-  const handleRestoreBackup = async (filename: string) => {
-    try {
-      const [s, g] = await invoke<[number, number]>("restore_backup_cmd", { filename });
-      showToast(`✅ Restored ${s} snippets and ${g} groups`);
-      loadData();
-    } catch (e) { showToast(String(e), "error"); }
-  };
-
-  const handleDeleteBackup = async (filename: string) => {
-    try {
-      await invoke("delete_backup_cmd", { filename });
-      showToast("Backup deleted");
-      loadData();
-    } catch (e) { showToast(String(e), "error"); }
-  };
-
-  const formatBytes = (bytes: number) => bytes < 1024 ? bytes + " B" : (bytes / 1024).toFixed(1) + " KB";
-
-  return (
-    <>
-      <div className="content-header">
-        <h1>⚙️ Settings</h1>
-        <button className="btn btn-primary" onClick={handleSave}>💾 Save Settings</button>
-      </div>
-      <div className="content-body">
-        {/* Overview Stats */}
-        <div style={{ display: "flex", gap: 16, marginBottom: 32 }}>
-          <div className="stat-card">
-            <div className="stat-value">{snippetCount}</div>
-            <div className="stat-label">Total Snippets</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value">{groupCount}</div>
-            <div className="stat-label">Groups</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value">{embedCount}/{snippetCount}</div>
-            <div className="stat-label">AI Embedded</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value">{aiCount}</div>
-            <div className="stat-label">AI Generated</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value" style={{ fontSize: 18 }}>{hookActive ? "🟢 Active" : "⏸ Paused"}</div>
-            <div className="stat-label">Text Expander</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value" style={{ fontSize: 18 }}>{ollamaOnline ? "🟢 Online" : "🔴 Offline"}</div>
-            <div className="stat-label">Ollama AI</div>
-          </div>
-        </div>
-
-        <div className="settings-section">
-          <h3>⌨️ Text Expander Engine</h3>
-          <div className="settings-row">
-            <label>Background text expansion</label>
-            <button className={`btn ${hookActive ? "btn-primary" : "btn-secondary"}`} onClick={handleToggleHook} style={{ minWidth: 120 }}>
-              {hookActive ? "✅ Enabled" : "⏸ Disabled"}
-            </button>
-          </div>
-          <div className="settings-row">
-            <label>Desktop Notifications</label>
-            <button className={`btn ${notificationsEnabled ? "btn-primary" : "btn-secondary"}`} onClick={handleToggleNotifications} style={{ minWidth: 120 }}>
-              {notificationsEnabled ? "🔔 Enabled" : "🔕 Disabled"}
-            </button>
-          </div>
-          <div style={{ fontSize: 12, color: "var(--text-tertiary)", padding: "8px 0" }}>
-            When enabled, the text expander monitors your typing globally. When you type a snippet keyword (e.g. <code style={{ color: "var(--accent-secondary)" }}>//email</code>) and press space, the keyword is replaced with the snippet content. Notifications show a popup when a snippet is expanded.
-          </div>
-        </div>
-
-        <div className="settings-section">
-          <h3>🤖 AI Configuration</h3>
-          <div className="settings-row"><label>Ollama URL</label><input className="input" value={ollamaUrl} onChange={e => setOllamaUrl(e.target.value)} style={{ maxWidth: 300 }} /></div>
-          <div className="settings-row"><label>Text Generation Model</label><input className="input" value={textModel} onChange={e => setTextModel(e.target.value)} style={{ maxWidth: 300 }} /></div>
-          <div className="settings-row"><label>Embedding Model</label><input className="input" value={embedModel} onChange={e => setEmbedModel(e.target.value)} style={{ maxWidth: 300 }} /></div>
-          <div className="settings-row">
-            <label>Status</label>
-            <div className="status-indicator"><span className={`status-dot ${ollamaOnline ? "online" : "offline"}`} />{ollamaOnline ? "Connected" : "Disconnected"}</div>
-          </div>
-          <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 12 }}>
-            <label>Semantic Search Sync</label>
-            <div style={{ display: "flex", gap: 10, width: "100%" }}>
-              <button className="btn btn-secondary" onClick={() => handleReEmbed(true)} disabled={rebedding || !ollamaOnline} style={{ flex: 1 }}>
-                {rebedding ? <span className="spinner" /> : "⏯ Resume Embedding"}
-              </button>
-              <button className="btn btn-danger btn-outline" onClick={() => { if(confirm("This will clear existing embeddings and start from scratch. Proceed?")) handleReEmbed(false) }} disabled={rebedding || !ollamaOnline} style={{ flex: 1 }}>
-                {rebedding ? <span className="spinner" /> : "🔄 Force All"}
-              </button>
-            </div>
-            
-            {embedProgress && (
-              <div className="progress-container" style={{ width: "100%", marginTop: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 12 }}>
-                  <span style={{ color: "var(--text-secondary)" }}>
-                    Processing {embedProgress.current} of {embedProgress.total}
-                  </span>
-                  <span style={{ fontWeight: 600, color: "var(--accent-primary)" }}>
-                    {Math.round(embedProgress.percentage)}%
-                  </span>
-                </div>
-                <div className="progress-bar-bg">
-                  <div className="progress-bar-fill" style={{ width: `${embedProgress.percentage}%` }}></div>
-                </div>
-              </div>
-            )}
-            <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-              Embedding is required for OmniSearch (semantic). "Resume" skips snippets that already have embeddings. "Force All" recalculates everything.
-            </div>
-          </div>
-          {models.length > 0 && (
-            <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-              <label>Available Models</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {models.map(m => <span key={m.name} className="keyword-badge" style={{ cursor: "pointer" }} onClick={() => setTextModel(m.name)}>{m.name}</span>)}
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="settings-section">
-          <h3>🌐 Language / Bahasa</h3>
-          <div className="settings-row">
-            <label>Interface Language</label>
-            <select className="input" value={language} onChange={e => { const v = e.target.value as Language; setLanguage(v); onLanguageChange(v); invoke("set_preference", { key: "language", value: v }); }} style={{ maxWidth: 300 }}>
-              <option value="en">English</option>
-              <option value="id">Bahasa Indonesia</option>
-              <option value="both">Both / Keduanya</option>
-            </select>
-          </div>
-        </div>
-        <div className="settings-section">
-          <h3>💾 Backup & Restore</h3>
-          <div className="settings-row">
-            <label>Create a backup of all snippets, groups, and settings</label>
-            <button className="btn btn-primary" onClick={handleCreateBackup} disabled={backingUp}>
-              {backingUp ? <span className="spinner" /> : "📦"} Create Backup
-            </button>
-          </div>
-          {backups.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
-                Saved Backups ({backups.length})
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {backups.map(b => (
-                  <div key={b.filename} className="card" style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{b.filename}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                        {new Date(b.created_at).toLocaleString()} · {b.snippet_count} snippets · {b.group_count} groups · {formatBytes(b.size_bytes)}
-                      </div>
-                    </div>
-                    <button className="btn btn-sm btn-primary" onClick={() => handleRestoreBackup(b.filename)} style={{ fontSize: 11 }}>♻️ Restore</button>
-                    <button className="btn btn-sm btn-danger btn-icon" onClick={() => handleDeleteBackup(b.filename)} title="Delete">🗑</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="settings-section">
-          <h3>📋 Template Variables</h3>
-          <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 2 }}>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{clipboard}"}</code> Current clipboard content<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{date}"}</code> Current date (YYYY-MM-DD)<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{time}"}</code> Current time (HH:MM:SS)<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{dateTime:format}"}</code> Custom date/time (e.g. yyyy-MM-dd HH:mm:ss)<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{dateTime:+1d:format}"}</code> Date with offset (e.g. +1d-2h)<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{date:format}"}</code> Custom date format<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{time:format}"}</code> Custom time format<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{cursor}"}</code> Cursor position after paste<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{input:description}"}</code> Interactive text input dialog<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{combo:keyword}"}</code> Insert another snippet<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{envVar:name}"}</code> Environment variable<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{ai:prompt}"}</code> Generate text via Ollama AI<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{upper:text}"}</code> Uppercase<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{lower:text}"}</code> Lowercase<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{trim:text}"}</code> Trim whitespace<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{key:keyname}"}</code> Simulate key press (e.g. tab, enter, up)<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{key:keyname:count}"}</code> Repeat key N times<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{shortcut:mod+key}"}</code> Simulate shortcut (e.g. Ctrl+Shift+J)<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{delay:ms}"}</code> Pause during expansion (milliseconds)<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{powershell:path}"}</code> Execute PowerShell script<br/>
-            <code className="keyword-badge" style={{ marginRight: 8 }}>{"#{powershell:path:timeoutMs}"}</code> Script with timeout (0=indefinite)
-          </div>
-        </div>
-        <div className="settings-section">
-          <h3>🚀 Application Updates</h3>
-          <div className="settings-row">
-            <label>Check for new version</label>
-            <UpdateChecker showToast={showToast} />
-          </div>
-        </div>
-
-        <div className="settings-section">
-          <h3>ℹ️ About</h3>
-          <div className="settings-row"><label>Version</label><span style={{ color: "var(--text-secondary)" }}>BeefText AI {appVersion}</span></div>
-          <div className="settings-row"><label>License</label><span style={{ color: "var(--text-secondary)" }}>MIT License</span></div>
-          <div className="settings-row"><label>Inspired by</label><span style={{ color: "var(--text-secondary)" }}>Beeftext by Xavier Michelon</span></div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ─── Update Checker ───────────────────────────────────────────────────────────
-
-function UpdateChecker({ showToast }: { showToast: (m: string, t?: "success" | "error") => void }) {
-  const [checking, setChecking] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-
-  const handleCheck = async () => {
-    setChecking(true);
-    try {
-      const update = await check();
-      if (update) {
-        setUpdateAvailable(true);
-        showToast("📦 An update is available!", "success");
-        if (confirm(`New version ${update.version} is available. Install and restart?`)) {
-          await update.downloadAndInstall();
-          await relaunch();
-        }
-      } else {
-        showToast("✅ Application is up to date");
-      }
-    } catch (e) {
-      const errMsg = String(e);
-      // Tauri updater throws this specific error if the latest.json endpoint returns a 404 (e.g. no release exists yet)
-      if (errMsg.includes("JSON") || errMsg.includes("404")) {
-        showToast("✅ You are already on the latest version");
-      } else {
-        showToast(`Update Check Failed: ${errMsg}`, "error");
-      }
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  return (
-    <button className={`btn ${updateAvailable ? "btn-primary" : "btn-secondary"}`} onClick={handleCheck} disabled={checking}>
-      {checking ? <span className="spinner" /> : (updateAvailable ? "⬇️ Update Now" : "🔄 Check for Updates")}
-    </button>
-  );
-}
-
-
