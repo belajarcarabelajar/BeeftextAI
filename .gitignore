@@ -31,5 +31,5 @@ yarn-error.log*
 # Sensitive directories
 archive/
 secrets/
-*.key
+*.key*
 *.bin

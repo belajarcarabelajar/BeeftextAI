@@ -115,3 +115,41 @@ impl Snippet {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strict_match() {
+        let snippet = Snippet::new(
+            "brb".to_string(),
+            "be right back".to_string(),
+            "BRB".to_string(),
+            "".to_string(),
+            None,
+        );
+        
+        assert!(snippet.matches_input("brb"));
+        assert!(snippet.matches_input("I will brb"));
+        // Case sensitive by default, so uppercase won't match
+        assert!(!snippet.matches_input("BRB"));
+        // Fails word boundary
+        assert!(!snippet.matches_input("brba"));
+    }
+
+    #[test]
+    fn test_loose_match() {
+        let mut snippet = Snippet::new(
+            "brb".to_string(),
+            "be right back".to_string(),
+            "BRB".to_string(),
+            "".to_string(),
+            None,
+        );
+        snippet.matching_mode = MatchingMode::Loose;
+        
+        assert!(snippet.matches_input("I will brb shortly"));
+        assert!(snippet.matches_input("wordbrbword"));
+    }
+}
