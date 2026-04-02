@@ -40,7 +40,7 @@
 
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI4RDVCOUM1NzA0QUY5QzEKUldUQitVcHd4Ym5WS0pJQzFCeGlZSiswRTdmTHh0eTlGUnQ4Sis4ZXJ0c1M0aDBGeTg1cG8xWUcK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZFNzVBNzY2NkJBQjBFM0QKUldROURxdHJacWQxL25NQXV5MC94ZnF2Wmc5WGJoSWlNc0d4dDZXVTJ4RmpNUSt0QWRLVUNIOWcK",
       "endpoints": [
         "https://github.com/belajarcarabelajar/BeeftextAI/releases/latest/download/latest.json"
       ]
