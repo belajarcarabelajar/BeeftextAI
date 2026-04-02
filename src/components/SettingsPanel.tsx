@@ -4,7 +4,8 @@ import { listen } from "@tauri-apps/api/event";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
-import { Group, Language } from "../types";
+import { Group } from "../types";
+import { Language } from "../i18n";
 import { formatBytes } from "../utils";
 
 interface Props {

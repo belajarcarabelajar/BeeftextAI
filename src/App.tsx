@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { save, open as openPicker } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { writeTextFile, readFile } from "@tauri-apps/plugin-fs";
+import { getVersion } from "@tauri-apps/api/app";
 import { useTranslation, Language } from "./i18n";
 import { getPreferredTheme, setTheme, toggleTheme, getStoredTheme, initTheme, Theme } from "./theme";
 import { Snippet, Group, Page } from "./types";
