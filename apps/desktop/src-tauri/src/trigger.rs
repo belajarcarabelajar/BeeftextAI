@@ -11,6 +11,10 @@ use std::time::{Duration, Instant};
 /// Debounce delay in milliseconds — wait this long after last keystroke before checking
 const DEBOUNCE_DELAY_MS: u64 = 100;
 
+/// Short grace period (ms) for the first keystroke after buffer clear or startup.
+/// Prevents triggers on empty fields from waiting the full debounce delay.
+const FIRST_KEYSTROKE_DELAY_MS: u64 = 10;
+
 /// Maximum concurrent snippet-substitution threads (prevents unbounded spawn)
 const MAX_CONCURRENT_SUBSTITUTIONS: usize = 8;
 static THREAD_COUNT: AtomicUsize = AtomicUsize::new(0);
@@ -130,8 +134,9 @@ pub fn ensure_worker_running() {
                     Duration::from_millis(DEBOUNCE_DELAY_MS) - elapsed
                 }
             } else {
-                // Never triggered, use full debounce delay
-                Duration::from_millis(DEBOUNCE_DELAY_MS)
+                // First keystroke after buffer clear or startup — short grace period
+                // so triggers fire promptly on empty fields
+                Duration::from_millis(FIRST_KEYSTROKE_DELAY_MS)
             };
 
             // Wait for a job or timeout for debounce
