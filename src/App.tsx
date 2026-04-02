@@ -7,7 +7,7 @@ import { writeTextFile, readFile } from "@tauri-apps/plugin-fs";
 import { getVersion } from "@tauri-apps/api/app";
 import { useTranslation, Language } from "./i18n";
 import { getPreferredTheme, setTheme, toggleTheme, getStoredTheme, initTheme, Theme } from "./theme";
-import { Snippet, Group, Page } from "./types";
+import { Snippet, Group, Page, ImportResult } from "./types";
 import { estimateTokenCount, truncateToTokens } from "./utils";
 import SnippetEditor from "./components/SnippetEditor";
 import SettingsPanel from "./components/SettingsPanel";
@@ -141,7 +141,7 @@ export default function App() {
       </aside>
 
       <main className="main-content">
-        {page === "snippets" && <SnippetsPage showToast={showToast} showForm={showForm} setShowForm={setShowForm} editingSnippet={editingSnippet} setEditingSnippet={setEditingSnippet} />}
+        {page === "snippets" && <SnippetsPage showToast={showToast} showForm={showForm} setShowForm={setShowForm} editingSnippet={editingSnippet} setEditingSnippet={setEditingSnippet} t={t} />}
         {page === "chat" && <ChatPage showToast={showToast} ollamaOnline={ollamaOnline} />}
         {page === "search" && <SearchPage showToast={showToast} ollamaOnline={ollamaOnline} onEditSnippet={(s) => { setEditingSnippet(s); setShowForm(true); setPage("snippets"); }} />}
         {page === "settings" && <SettingsPanel showToast={showToast} ollamaOnline={ollamaOnline} onLanguageChange={setLang} />}
@@ -162,6 +162,7 @@ function SnippetsPage({ showToast, showForm, setShowForm, editingSnippet, setEdi
   setShowForm: (v: boolean) => void;
   editingSnippet: Snippet | null;
   setEditingSnippet: (s: Snippet | null) => void;
+  t: any;
 }) {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -565,7 +566,7 @@ function ImportModal({ onClose, onImport, showToast }: {
               {result.errors.length > 0 && (
                 <div style={{ fontSize: 12, color: "var(--accent-warning)" }}>
                   <strong>⚠️ {result.errors.length} warnings:</strong>
-                  <ul style={{ marginTop: 4 }}>{result.errors.slice(0, 5).map((e, i) => <li key={i}>{e}</li>)}</ul>
+                  <ul style={{ marginTop: 4 }}>{result.errors.slice(0, 5).map((e: string, i: number) => <li key={i}>{e}</li>)}</ul>
                 </div>
               )}
             </div>
@@ -762,9 +763,14 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
       return updated.length > 10 ? updated.slice(updated.length - 10) : updated;
     });
     setLoading(true);
+
+    const backendMsg = sentImagePreview 
+      ? userMsg + "\n\n[SYSTEM NOTE: The user has successfully attached an image to this request. Acknowledge it, and generate the JSON snippet with content_type 'Image' or 'Both'. OMIT the 'image_data' field from the JSON. Do NOT say you cannot see the image.]"
+      : userMsg;
+
     try {
-      const response = await invoke<string>("chat_with_ai", { message: userMsg, imageData });
-      setMessages(prev => [...prev, { role: "assistant", content: response }]);
+      const response = await invoke<string>("chat_with_ai", { message: backendMsg, imageData });
+      setMessages(prev => [...prev, { role: "assistant", content: response, imagePreview: sentImagePreview ?? undefined }]);
     } catch (e) {
       showToast(String(e), "error");
       setMessages(prev => [...prev, { role: "assistant", content: `❌ Error: ${e}` }]);
@@ -1002,7 +1008,7 @@ function MessageContent({ content, showToast }: { content: string; showToast: (m
         const allSnippets = await invoke<Snippet[]>("get_snippets");
         const isDuplicate = allSnippets.some(s => s.keyword === generatedKeyword);
         if (isDuplicate) {
-          if (!window.confirm(t("confirmKeywordDuplicate", generatedKeyword))) {
+          if (!window.confirm(`Are you sure? The keyword '${generatedKeyword}' has already been used for another snippet.`)) {
             return;
           }
         }
