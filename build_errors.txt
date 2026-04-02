@@ -1,0 +1,17 @@
+    Checking beeftextai v0.4.3 (C:\Users\Tedi Rahmat\BeeftextAI\apps\desktop\src-tauri)
+warning: function `set_backspace_delay_ms` is never used
+  --> src\clipboard.rs:63:8
+   |
+63 | pub fn set_backspace_delay_ms(ms: u64) {
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `inject_both` is never used
+   --> src\clipboard.rs:256:8
+    |
+256 | pub fn inject_both(text: &str, base64_image: &str) {
+    |        ^^^^^^^^^^^
+
+warning: `beeftextai` (lib) generated 2 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.43s
