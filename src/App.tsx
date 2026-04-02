@@ -584,7 +584,7 @@ function ImportModal({ onClose, onImport, showToast }: {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "success" | "error") => void; ollamaOnline: boolean }) {
-  const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: string; content: string; imagePreview?: string }[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [imageData, setImageData] = useState<string | null>(null);
@@ -738,16 +738,27 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
   };
 
   const sendMessage = async () => {
-    if ((!input.trim() && !imageData) || loading) return;
+    // Require text input always — image-only is rejected (model is non-OCR)
+    if (!input.trim() || loading) {
+      if (imageData && !input.trim()) {
+        showToast("Tambahkan teks dulu sebelum kirim gambar.", "error");
+      }
+      return;
+    }
     const MAX_INPUT_TOKENS = 2000;
     const rawMsg = input.trim();
     const userMsg = rawMsg ? truncateToTokens(rawMsg, MAX_INPUT_TOKENS) : "";
-    const tokens = userMsg ? estimateTokenCount(userMsg) : 0;
     const wasTruncated = userMsg.length < rawMsg.length;
+    void wasTruncated; // suppress unused warning
+    const sentImagePreview = imagePreview; // capture before clearing
     setInput("");
     // Add user message + keep only last 10 messages to reduce backend load
     setMessages(prev => {
-      const updated = [...prev, { role: "user", content: userMsg || (imageData ? "[image]" : "") }];
+      const updated = [...prev, {
+        role: "user",
+        content: userMsg,
+        imagePreview: sentImagePreview ?? undefined,
+      }];
       return updated.length > 10 ? updated.slice(updated.length - 10) : updated;
     });
     setLoading(true);
@@ -819,6 +830,13 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
               {msg.role === "user" ? "👤" : "🤖"}
             </div>
             <div className="chat-bubble">
+              {msg.imagePreview && (
+                <img
+                  src={msg.imagePreview}
+                  alt="Attachment"
+                  style={{ maxHeight: 120, maxWidth: "100%", borderRadius: 6, marginBottom: 8, display: "block", border: "1px solid var(--border)" }}
+                />
+              )}
               <MessageContent content={msg.content} showToast={showToast} />
             </div>
           </div>
@@ -850,11 +868,125 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
           <input type="file" accept="image/*" onChange={handleImageSelect} disabled={!ollamaOnline || loading} style={{ display: "none" }} id="chat-image-upload" />
           <label htmlFor="chat-image-upload" style={{ cursor: "pointer", padding: "4px 8px", fontSize: 18 }} title="Attach image">🖼️</label>
           <textarea className="chat-input" placeholder="Ask AI to create a snippet..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} rows={1} disabled={!ollamaOnline || loading} />
-          <button className="chat-send-btn" onClick={sendMessage} disabled={!ollamaOnline || loading || (!input.trim() && !imageData)}>➤</button>
+          <button className="chat-send-btn" onClick={sendMessage} disabled={!ollamaOnline || loading || !input.trim()}>➤</button>
         </div>
       </div>
     </div>
   );
+}
+
+// ─── Inline Markdown Renderer ─────────────────────────────────────────────────
+// Parsing priority (CRITICAL — do not reorder):
+//   1. Triple-backtick code blocks (``` ... ```)
+//   2. Single-backtick inline code (` ... `)
+//   3. Bold (**text**)
+//   4. Italic (*text*)
+//   5. Unordered / ordered lists
+//   6. Line breaks
+// TODO: Tables and deeply nested formatting are out of scope for now.
+
+function renderMarkdown(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let key = 0;
+
+  // Split on triple-backtick code blocks first
+  const codeBlockParts = text.split(/(```[\s\S]*?```)/g);
+
+  for (const part of codeBlockParts) {
+    // ── Triple-backtick code block ──
+    if (part.startsWith("```") && part.endsWith("```")) {
+      const inner = part.slice(3, -3);
+      // Strip optional language hint on first line (e.g. ```json ...)
+      const firstNewline = inner.indexOf("\n");
+      const code = firstNewline !== -1 ? inner.slice(firstNewline + 1) : inner;
+      nodes.push(
+        <pre key={key++} className="chat-code-block"><code>{code}</code></pre>
+      );
+      continue;
+    }
+
+    // ── Line-by-line parsing ──
+    const lines = part.split("\n");
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+
+      // Unordered list item
+      if (/^[-*]\s/.test(line)) {
+        const listItems: React.ReactNode[] = [];
+        while (i < lines.length && /^[-*]\s/.test(lines[i])) {
+          listItems.push(<li key={key++}>{renderInline(lines[i].replace(/^[-*]\s/, ""), key)}</li>);
+          i++;
+        }
+        nodes.push(<ul key={key++} className="chat-md-list">{listItems}</ul>);
+        continue;
+      }
+
+      // Ordered list item
+      if (/^\d+\.\s/.test(line)) {
+        const listItems: React.ReactNode[] = [];
+        while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+          listItems.push(<li key={key++}>{renderInline(lines[i].replace(/^\d+\.\s/, ""), key)}</li>);
+          i++;
+        }
+        nodes.push(<ol key={key++} className="chat-md-list">{listItems}</ol>);
+        continue;
+      }
+
+      // Empty line → spacer
+      if (line.trim() === "") {
+        nodes.push(<br key={key++} />);
+        i++;
+        continue;
+      }
+
+      // Normal paragraph line
+      nodes.push(<span key={key++}>{renderInline(line, key)}<br /></span>);
+      i++;
+    }
+  }
+
+  return nodes;
+}
+
+/** Render inline markdown: single backtick, bold, italic */
+function renderInline(text: string, baseKey: number): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let key = baseKey * 1000;
+
+  // Split on single-backtick inline code (after triple-backtick already removed)
+  const inlineParts = text.split(/(`[^`]+`)/g);
+
+  for (const part of inlineParts) {
+    if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
+      nodes.push(<code key={key++} className="chat-inline-code">{part.slice(1, -1)}</code>);
+      continue;
+    }
+
+    // Process bold + italic on the remaining plain text
+    let remaining = part;
+    const boldItalicRegex = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = boldItalicRegex.exec(remaining)) !== null) {
+      if (match.index > lastIndex) {
+        nodes.push(<span key={key++}>{remaining.slice(lastIndex, match.index)}</span>);
+      }
+      const raw = match[0];
+      if (raw.startsWith("**")) {
+        nodes.push(<strong key={key++}>{raw.slice(2, -2)}</strong>);
+      } else {
+        nodes.push(<em key={key++}>{raw.slice(1, -1)}</em>);
+      }
+      lastIndex = match.index + raw.length;
+    }
+    if (lastIndex < remaining.length) {
+      nodes.push(<span key={key++}>{remaining.slice(lastIndex)}</span>);
+    }
+  }
+
+  return nodes;
 }
 
 // ─── Message Content ──────────────────────────────────────────────────────────
@@ -915,7 +1047,7 @@ function MessageContent({ content, showToast }: { content: string; showToast: (m
       </div>
     );
   }
-  return <div style={{ whiteSpace: "pre-wrap" }}>{content}</div>;
+  return <div className="chat-md">{renderMarkdown(content)}</div>;
 }
 
 function extractSnippetJson(text: string): any {
