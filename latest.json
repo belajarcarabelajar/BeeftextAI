@@ -1,11 +1,11 @@
 {
-  "version": "0.4.5",
-  "notes": "## v0.4.5 - AI Chat Image Handling & UI Enhancements\n- Fixed issue where AI Chat couldn't acknowledge attached images.\n- Added hidden system context for image recognition (non-OCR models).\n- Improved Chat UI with amber-to-burnt-orange gradients (WCAG AA compliant).\n- Enhanced dark mode contrast and added inline markdown parsing for code blocks.\n- Fixed version synchronization and automated deployment scripts.",
-  "pub_date": "2026-04-02T18:55:00Z",
+  "version": "0.4.6",
+  "notes": "## v0.4.6 - Snippet Trigger Fix\n- Fixed trigger not firing on empty input fields — first keystroke now uses 10ms grace period instead of 100ms debounce\n- Triggers in empty fields should fire promptly without needing to type a space first",
+  "pub_date": "2026-04-03T00:20:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3BBb3MxTlc4ZWtKSUN5SzF6eVl0clBUR3pDM0RWTWh4VDJKd010UURjUGgzMWVQdFl2SkpiN1Npb3F3NE44ZytLZzVpZGFkWXcyR1VGV0g4am1ndlE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MTMzMzE4CWZpbGU6QmVlZlRleHQuQUlfMC40LjVfeDY0LXNldHVwLmV4ZQpudEVYbzhDSXdJbS80V0hFWkZveVBlVEdieTd2anBlUlJWQTVhbU5sem9xMUthbUI2MXJZNmxkZVIxeHNsRFgzMHJTMEd6WnBTRFJrbXZwMEpiRWdEZz09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.4.5/BeefText.AI_0.4.5_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUQitVcHd4Ym5WS0g3ZGxhYk5GMXZ5bHpoUUZGNzhmd1djanJTUE05dTBQbmNDNU5VRFBKbjZGNExZRXIrZjlQT1dYSHQ2di8rK2FJTE83VUluQmlxMFBLWFdLZXU0NHdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MTUwNzI4CWZpbGU6QmVlZlRleHQuQUlfMC40LjZfeDY0LXNldHVwLmV4ZQpSUEJwNmFtc1A1K25xb3pPZWdScUZVUjc0WXpDalhhTEY5cTRIQWxjR1RpYmhaTWhaL2NScTBveE00OW9IQVEwbVNDZlUyVUJLMHA5MGtCVkl4ZWxBQT09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.4.6/BeefText.AI_0.4.6_x64-setup.exe"
     }
   }
 }
