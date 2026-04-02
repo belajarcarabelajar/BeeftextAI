@@ -843,7 +843,7 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
                   style={{ maxHeight: 120, maxWidth: "100%", borderRadius: 6, marginBottom: 8, display: "block", border: "1px solid var(--border)" }}
                 />
               )}
-              <MessageContent content={msg.content} showToast={showToast} />
+              <MessageContent content={msg.content} showToast={showToast} imagePreview={msg.imagePreview} />
             </div>
           </div>
         ))}
@@ -997,7 +997,7 @@ function renderInline(text: string, baseKey: number): React.ReactNode[] {
 
 // ─── Message Content ──────────────────────────────────────────────────────────
 
-function MessageContent({ content, showToast }: { content: string; showToast: (m: string, t?: "success" | "error") => void }) {
+function MessageContent({ content, showToast, imagePreview }: { content: string; showToast: (m: string, t?: "success" | "error") => void; imagePreview?: string }) {
   const snippetJson = extractSnippetJson(content);
   if (snippetJson) {
     // Strip markdown code fences (```json, ```) that wrap the JSON
@@ -1026,12 +1026,13 @@ function MessageContent({ content, showToast }: { content: string; showToast: (m
           }
         }
 
-        await invoke("add_snippet", { keyword: generatedKeyword, snippetText: snippetJson.snippet || "", name: snippetJson.name || "", description: snippetJson.description || "", groupId: groupId, aiGenerated: true, imageData: snippetJson.image_data || null, contentType: snippetJson.content_type || "Text" });
+        const finalImageData = snippetJson.image_data || imagePreview || null;
+        await invoke("add_snippet", { keyword: generatedKeyword, snippetText: snippetJson.snippet || "", name: snippetJson.name || "", description: snippetJson.description || "", groupId: groupId, aiGenerated: true, imageData: finalImageData, contentType: snippetJson.content_type || "Text" });
         showToast("✅ Snippet saved!");
       } catch (e) { showToast(String(e), "error"); }
     };
     const ct = snippetJson.content_type;
-    const img = snippetJson.image_data;
+    const img = snippetJson.image_data || imagePreview;
     return (
       <div>
         {textBefore && <p style={{ marginBottom: 10 }}>{textBefore}</p>}
