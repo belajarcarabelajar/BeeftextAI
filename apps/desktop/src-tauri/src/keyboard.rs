@@ -5,7 +5,7 @@ use rdev::{listen, Event, EventType, Key};
 
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    ToUnicodeEx, GetKeyboardLayout, HKL,
+    ToUnicodeEx, GetKeyboardLayout, GetKeyState, HKL,
 };
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
@@ -16,6 +16,8 @@ pub struct KeyboardState {
     pub enabled: Arc<AtomicBool>,
     pub running: Arc<AtomicBool>,
     pub shift_pressed: Arc<AtomicBool>,
+    /// L7: Track AltGr (RightAlt) state for European keyboard layouts
+    pub altgr_pressed: Arc<AtomicBool>,
     /// When false, skip processing events (used during text substitution to prevent feedback loop)
     active: Arc<AtomicBool>,
 }
@@ -27,6 +29,7 @@ impl KeyboardState {
             enabled: Arc::new(AtomicBool::new(true)),
             running: Arc::new(AtomicBool::new(false)),
             shift_pressed: Arc::new(AtomicBool::new(false)),
+            altgr_pressed: Arc::new(AtomicBool::new(false)),
             active: Arc::new(AtomicBool::new(true)),
         }
     }
@@ -54,20 +57,32 @@ impl KeyboardState {
     /// Convert a virtual key and scan code to a character using the current keyboard layout.
     /// Returns the character if successful, None otherwise.
     /// This properly handles international keyboard layouts (German, French, etc.)
+    /// Respects CapsLock state (M1 fix) and AltGr state (L7 fix).
     #[cfg(target_os = "windows")]
-    fn vk_to_char_layout_aware(vk: u32, scan_code: u32, shift: bool) -> Option<char> {
+    fn vk_to_char_layout_aware(vk: u32, scan_code: u32, shift: bool, altgr: bool) -> Option<char> {
         unsafe {
             let hkl = Self::get_current_layout();
 
-            // Prepare keyboard state: set shift bit if pressed
+            // Prepare keyboard state array
             let mut keyboard_state = [0u8; 256];
             if shift {
                 keyboard_state[0x10] = 0x80; // VK_SHIFT
             }
 
+            // M1: CapsLock toggle state
+            if GetKeyState(0x14) & 0x01 != 0 {
+                keyboard_state[0x14] = 0x01; // VK_CAPITAL toggle bit
+            }
+
+            // L7: AltGr is represented as Ctrl+Alt internally on Windows.
+            // Set VK_MENU (Alt) + VK_RCONTROL to enable AltGr character mapping.
+            if altgr {
+                keyboard_state[0x12] = 0x80; // VK_MENU
+                keyboard_state[0xA3] = 0x80; // VK_RCONTROL
+            }
+
             let mut buf = [0u16; 8];
 
-            // Try ToUnicodeEx (layout-aware)
             let result = ToUnicodeEx(
                 vk,
                 scan_code,
@@ -91,7 +106,7 @@ impl KeyboardState {
     }
 
     #[cfg(not(target_os = "windows"))]
-    fn vk_to_char_layout_aware(_vk: u32, _scan_code: u32, _shift: bool) -> Option<char> {
+    fn vk_to_char_layout_aware(_vk: u32, _scan_code: u32, _shift: bool, _altgr: bool) -> Option<char> {
         None
     }
 
@@ -192,6 +207,23 @@ impl KeyboardState {
             // Other
             Key::CapsLock => Some((0x14, 0x3A)),
 
+            // L1: Numpad keys
+            Key::KpMinus    => Some((0x6D, 0x4A)),
+            Key::KpPlus     => Some((0x6B, 0x4E)),
+            Key::KpMultiply => Some((0x6A, 0x37)),
+            Key::KpDivide   => Some((0x6F, 0xB5)),
+            Key::KpReturn   => Some((0x0D, 0x9C)),
+            Key::Kp0 => Some((0x60, 0x52)),
+            Key::Kp1 => Some((0x61, 0x4F)),
+            Key::Kp2 => Some((0x62, 0x50)),
+            Key::Kp3 => Some((0x63, 0x51)),
+            Key::Kp4 => Some((0x64, 0x4B)),
+            Key::Kp5 => Some((0x65, 0x4C)),
+            Key::Kp6 => Some((0x66, 0x4D)),
+            Key::Kp7 => Some((0x67, 0x47)),
+            Key::Kp8 => Some((0x68, 0x48)),
+            Key::Kp9 => Some((0x69, 0x49)),
+
             _ => None,
         }
     }
@@ -199,7 +231,7 @@ impl KeyboardState {
     /// Start listening for keyboard events in a background thread
     pub fn start_listening<F>(&self, on_trigger: F)
     where
-        F: Fn(String) + Send + 'static,
+        F: Fn(String) + Send + Sync + 'static,
     {
         if self.running.load(Ordering::Relaxed) {
             return; // Already running
@@ -209,91 +241,125 @@ impl KeyboardState {
         let enabled = Arc::clone(&self.enabled);
         let running = Arc::clone(&self.running);
         let shift_pressed = Arc::clone(&self.shift_pressed);
+        let altgr_pressed = Arc::clone(&self.altgr_pressed);
         let active = Arc::clone(&self.active);
 
         running.store(true, Ordering::Relaxed);
 
+        // Wrap on_trigger in Arc so the retry loop can clone it each iteration (H3 fix)
+        let on_trigger = Arc::new(on_trigger);
+
         thread::spawn(move || {
-            let callback = move |event: Event| {
-                if !enabled.load(Ordering::Relaxed) {
-                    return;
-                }
+            // H3 fix: auto-retry with exponential backoff if rdev::listen fails.
+            // This handles transient failures from UAC prompts, secure desktop,
+            // anti-cheat software, or driver restarts.
+            let mut backoff_ms: u64 = 1000;
+            const MAX_BACKOFF_MS: u64 = 30_000;
 
-                // Skip processing during text injection to prevent feedback loop
-                if !active.load(Ordering::Relaxed) {
-                    return;
-                }
-
-                match event.event_type {
-                    EventType::KeyPress(key) => {
-                        match key {
-                            Key::ShiftLeft | Key::ShiftRight => {
-                                shift_pressed.store(true, Ordering::Relaxed);
-                                return;
-                            }
-                            _ => {}
+            loop {
+                let callback = {
+                    let buffer = Arc::clone(&buffer);
+                    let enabled = Arc::clone(&enabled);
+                    let shift_pressed = Arc::clone(&shift_pressed);
+                    let altgr_pressed = Arc::clone(&altgr_pressed);
+                    let active = Arc::clone(&active);
+                    let on_trigger = Arc::clone(&on_trigger); // clone Arc for this iteration
+                    move |event: Event| {
+                        if !enabled.load(Ordering::Relaxed) {
+                            return;
                         }
-
-                        let mut buf = buffer.lock();
-                        let is_shift = shift_pressed.load(Ordering::Relaxed);
-
-                        match key {
-                            // Backspace — remove last char
-                            Key::Backspace => {
-                                buf.pop();
-                            }
-                            // Enter, Tab, Escape, Navigation keys — combo breakers (reset buffer)
-                            Key::Return | Key::Tab | Key::Escape
-                            | Key::Home | Key::End
-                            | Key::UpArrow | Key::DownArrow | Key::LeftArrow | Key::RightArrow
-                            | Key::Insert | Key::Delete => {
-                                buf.clear();
-                            }
-                            // Every normal key press — append to buffer and check for trigger immediately
-                            _ => {
-                                // Try layout-aware conversion first using Windows API
-                                if let Some((vk, sc)) = Self::key_to_vk_sc(&key) {
-                                    if let Some(ch) = Self::vk_to_char_layout_aware(vk, sc, is_shift) {
-                                        buf.push(ch);
-                                        if buf.len() > 200 {
-                                            let excess = buf.len() - 200;
-                                            buf.drain(..excess);
-                                        }
-                                        let current = buf.clone();
-                                        drop(buf);
-                                        on_trigger(current);
+                        // Skip processing during text injection to prevent feedback loop
+                        if !active.load(Ordering::Relaxed) {
+                            return;
+                        }
+                        match event.event_type {
+                            EventType::KeyPress(key) => {
+                                match key {
+                                    Key::ShiftLeft | Key::ShiftRight => {
+                                        shift_pressed.store(true, Ordering::Relaxed);
                                         return;
                                     }
-                                }
-                                // Fallback: try generic key_to_char for keys that might not have VK mapping
-                                if let Some(ch) = Self::key_to_char_fallback(&key, is_shift) {
-                                    buf.push(ch);
-                                    if buf.len() > 200 {
-                                        let excess = buf.len() - 200;
-                                        buf.drain(..excess);
+                                    // L7: Track AltGr (RightAlt) state
+                                    Key::Alt => {
+                                        altgr_pressed.store(true, Ordering::Relaxed);
+                                        return;
                                     }
-                                    let current = buf.clone();
-                                    drop(buf);
-                                    on_trigger(current);
+                                    _ => {}
+                                }
+
+                                let mut buf = buffer.lock();
+                                let is_shift = shift_pressed.load(Ordering::Relaxed);
+                                let is_altgr = altgr_pressed.load(Ordering::Relaxed);
+
+                                match key {
+                                    // Backspace — remove last char
+                                    Key::Backspace => {
+                                        buf.pop();
+                                    }
+                                    // Enter, Tab, Escape, Navigation keys — combo breakers (reset buffer)
+                                    Key::Return | Key::Tab | Key::Escape
+                                    | Key::Home | Key::End
+                                    | Key::UpArrow | Key::DownArrow | Key::LeftArrow | Key::RightArrow
+                                    | Key::Insert | Key::Delete => {
+                                        buf.clear();
+                                    }
+                                    // Every normal key press — append to buffer and check for trigger immediately
+                                    _ => {
+                                        // Try layout-aware conversion first using Windows API
+                                        if let Some((vk, sc)) = Self::key_to_vk_sc(&key) {
+                                            if let Some(ch) = Self::vk_to_char_layout_aware(vk, sc, is_shift, is_altgr) {
+                                                buf.push(ch);
+                                                if buf.len() > 200 {
+                                                    let excess = buf.len() - 200;
+                                                    buf.drain(..excess);
+                                                }
+                                                let current = buf.clone();
+                                                drop(buf);
+                                                on_trigger(current);
+                                                return;
+                                            }
+                                        }
+                                        // Fallback: try generic key_to_char for keys that might not have VK mapping
+                                        if let Some(ch) = Self::key_to_char_fallback(&key, is_shift) {
+                                            buf.push(ch);
+                                            if buf.len() > 200 {
+                                                let excess = buf.len() - 200;
+                                                buf.drain(..excess);
+                                            }
+                                            let current = buf.clone();
+                                            drop(buf);
+                                            on_trigger(current);
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-                    EventType::KeyRelease(key) => {
-                        match key {
-                            Key::ShiftLeft | Key::ShiftRight => {
-                                shift_pressed.store(false, Ordering::Relaxed);
+                            EventType::KeyRelease(key) => {
+                                match key {
+                                    Key::ShiftLeft | Key::ShiftRight => {
+                                        shift_pressed.store(false, Ordering::Relaxed);
+                                    }
+                                    // L7: Release AltGr
+                                    Key::Alt => {
+                                        altgr_pressed.store(false, Ordering::Relaxed);
+                                    }
+                                    _ => {}
+                                }
                             }
                             _ => {}
                         }
                     }
-                    _ => {}
-                }
-            };
+                };
 
-            if let Err(e) = listen(callback) {
-                eprintln!("Keyboard hook error: {:?}", e);
-                running.store(false, Ordering::Relaxed);
+                if let Err(e) = listen(callback) {
+                    log::error!("Keyboard hook failed: {:?}. Retrying in {}ms...", e, backoff_ms);
+                    thread::sleep(std::time::Duration::from_millis(backoff_ms));
+                    // Exponential backoff, capped at MAX_BACKOFF_MS
+                    backoff_ms = (backoff_ms * 2).min(MAX_BACKOFF_MS);
+                } else {
+                    // listen() returned Ok — this shouldn't happen normally,
+                    // but if it does we just restart immediately.
+                    backoff_ms = 1000;
+                }
             }
         });
     }

@@ -4,6 +4,7 @@ use crate::clipboard;
 use crate::variable;
 use crate::ollama::OllamaClient;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Instant;
 
 /// Global toggle for substitution notifications
 pub static NOTIFICATIONS_ENABLED: AtomicBool = AtomicBool::new(true);
@@ -27,6 +28,8 @@ impl StrExt for String {
 /// Perform the text substitution
 pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
     use crate::snippet::ContentType;
+    // L2: Track substitution timing for performance metrics
+    let start = Instant::now();
 
     // Evaluate variables only if there's text content
     let (expanded, cursor_offset, delays) = if !snippet.snippet.is_empty() {
@@ -42,7 +45,8 @@ pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
     };
 
     // Erase the trigger keyword (backspace simulation)
-    clipboard::erase_trigger(snippet.keyword.len());
+    // H5 fix: use chars().count() not .len() — multi-byte chars must count as one keystroke each
+    clipboard::erase_trigger(snippet.keyword.chars().count());
 
     // Inject content based on type
     match snippet.content_type {
@@ -79,10 +83,10 @@ pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
         std::thread::sleep(std::time::Duration::from_millis(delay_ms));
     }
 
-    // Update last_used_at
-    let mut updated = snippet.clone();
-    updated.last_used_at = Some(chrono::Utc::now().to_rfc3339());
-    let _ = store::update_snippet(&updated);
+    // Update last_used_at — use non-blocking write-behind channel (H6 fix)
+    // This avoids holding the DB mutex on the hot substitution path.
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    store::async_update_last_used(&snippet.uuid, &timestamp);
 
     // Log
     let preview = if expanded.char_count() > 50 { format!("{}...", expanded.truncate_chars(50)) } else { expanded.clone() };
@@ -91,7 +95,8 @@ pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
         ContentType::Image => "[image]".to_string(),
         ContentType::Both => format!("'{}' + [image]", preview),
     };
-    log::info!("Substituted '{}' → {}", snippet.keyword, content_desc);
+    // L2: Log substitution timing
+    log::info!("Substituted '{}' → {} (took {}ms)", snippet.keyword, content_desc, start.elapsed().as_millis());
 
     // Show notification (if enabled)
     if NOTIFICATIONS_ENABLED.load(Ordering::Relaxed) {
@@ -105,23 +110,25 @@ pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
             #[cfg(target_os = "windows")]
             {
                 use std::process::Command;
-                // Use PowerShell toast notification
-                let ps_script = format!(
+                use std::os::windows::process::CommandExt;
+                use base64::Engine;
+
+                // M6 fix: Encode the notification payload as Base64 to prevent PowerShell
+                // injection via crafted snippet names or content containing control characters.
+                let ps_payload = format!(
                     "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; \
                     $template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); \
                     $textNodes = $template.GetElementsByTagName('text'); \
-                    $textNodes.Item(0).AppendChild($template.CreateTextNode('{}')) > $null; \
-                    $textNodes.Item(1).AppendChild($template.CreateTextNode('{}')) > $null; \
+                    $textNodes.Item(0).AppendChild($template.CreateTextNode([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('{}')))) > $null; \
+                    $textNodes.Item(1).AppendChild($template.CreateTextNode([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('{}')))) > $null; \
                     $toast = [Windows.UI.Notifications.ToastNotification]::new($template); \
                     [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('BeefText AI').Show($toast)",
-                    title.replace("'", "''"),
-                    body.replace("'", "''")
+                    base64::engine::general_purpose::STANDARD.encode(title.as_bytes()),
+                    base64::engine::general_purpose::STANDARD.encode(body.as_bytes()),
                 );
-                use std::os::windows::process::CommandExt;
 
-                // 0x08000000 is CREATE_NO_WINDOW, which prevents the brief console flash
                 let _ = Command::new("powershell")
-                    .args(["-WindowStyle", "Hidden", "-Command", &ps_script])
+                    .args(["-WindowStyle", "Hidden", "-Command", &ps_payload])
                     .creation_flags(0x08000000)
                     .spawn();
             }

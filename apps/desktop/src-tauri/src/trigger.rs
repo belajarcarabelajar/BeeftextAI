@@ -15,6 +15,19 @@ const DEBOUNCE_DELAY_MS: u64 = 100;
 const MAX_CONCURRENT_SUBSTITUTIONS: usize = 8;
 static THREAD_COUNT: AtomicUsize = AtomicUsize::new(0);
 
+/// RAII guard — always restores keyboard hook active state and decrements THREAD_COUNT
+/// when dropped, even if the substitution thread panics.
+struct SubstitutionGuard {
+    kb: Arc<crate::keyboard::KeyboardState>,
+}
+
+impl Drop for SubstitutionGuard {
+    fn drop(&mut self) {
+        self.kb.set_active(true);
+        THREAD_COUNT.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
 /// Persistent worker state shared across the module
 static WORKER_STATE: WorkerState = WorkerState::new();
 
@@ -132,12 +145,6 @@ pub fn ensure_worker_running() {
                     // Debounce window elapsed — process pending buffer if any
                     if let Some(buffer) = pending_buffer.take() {
                         last_trigger_time = None;
-                        // Limit concurrent substitution threads — skip if at capacity
-                        let current = THREAD_COUNT.load(Ordering::Relaxed);
-                        if current >= MAX_CONCURRENT_SUBSTITUTIONS {
-                            continue;
-                        }
-                        THREAD_COUNT.store(current + 1, Ordering::Relaxed);
                         let ollama = get_ollama_for_worker();
                         let kb = Arc::clone(KEYBOARD_WORKER.get().unwrap());
                         thread::spawn(move || {
@@ -146,9 +153,9 @@ pub fn ensure_worker_running() {
                                 .build()
                                 .unwrap();
                             rt.block_on(async {
+                                // check_and_substitute_internal manages THREAD_COUNT itself
                                 check_and_substitute_internal(&buffer, &ollama, &kb).await;
                             });
-                            THREAD_COUNT.fetch_sub(1, Ordering::Relaxed);
                         });
                     }
                 }
@@ -209,29 +216,34 @@ async fn check_and_substitute_internal(
 
         if snippet.matches_input(typed_buffer) {
             kb.clear_buffer();
-            kb.set_active(false); // Prevent simulated keystrokes from being captured
 
-            // Limit concurrent substitution threads — skip if at capacity
-            let current = THREAD_COUNT.load(Ordering::Relaxed);
-            if current >= MAX_CONCURRENT_SUBSTITUTIONS {
-                return true; // At capacity — skip this match
+            // H1 fix: atomic fetch_add + rollback — prevents race condition between threads
+            let prev = THREAD_COUNT.fetch_add(1, Ordering::AcqRel);
+            if prev >= MAX_CONCURRENT_SUBSTITUTIONS {
+                // At capacity — rollback and skip this match
+                THREAD_COUNT.fetch_sub(1, Ordering::AcqRel);
+                return true;
             }
-            THREAD_COUNT.store(current + 1, Ordering::Relaxed);
+
+            // H4 fix: disable keyboard hook AFTER we've secured a slot
+            kb.set_active(false);
 
             // Perform substitution on a separate thread (clipboard ops are blocking)
+            // SubstitutionGuard (RAII) ensures set_active(true) + THREAD_COUNT-- even on panic
             let snippet_clone = snippet.clone();
             let ollama_clone = ollama.clone();
             let kb_clone = Arc::clone(kb);
             thread::spawn(move || {
+                // Guard is bound to this thread's scope — always runs Drop on exit/panic
+                let _guard = SubstitutionGuard { kb: kb_clone.clone() };
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
-                    .unwrap();
+                    .expect("Failed to create tokio runtime for substitution");
                 rt.block_on(async {
                     perform_substitution(&snippet_clone, &ollama_clone).await;
                 });
-                kb_clone.set_active(true); // Re-enable keyboard hook
-                THREAD_COUNT.fetch_sub(1, Ordering::Relaxed);
+                // _guard drops here, calling set_active(true) + THREAD_COUNT--
             });
 
             return true;

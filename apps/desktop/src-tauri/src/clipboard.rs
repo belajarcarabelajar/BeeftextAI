@@ -2,32 +2,98 @@ use arboard::Clipboard;
 use std::thread;
 use std::time::Duration;
 
+/// SendInput-based fallback for injecting text in elevated/secured contexts.
+/// Uses Win32 SendInput with KEYEVENTF_UNICODE to type each character individually.
+/// This works in contexts where Ctrl+V simulation is blocked (UAC dialogs, RDP, elevated apps).
+#[cfg(target_os = "windows")]
+fn send_input_chars_win32(text: &str) {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_UNICODE,
+    };
+
+    for ch in text.chars() {
+        let char_val = ch as u16;
+        // Some chars require surrogate pairs (codepoints > 0xFFFF)
+        // For simplicity we skip chars that can't be represented in UTF-16 directly
+        if ch as u32 > 0xFFFF {
+            continue;
+        }
+        let key_down = INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: windows::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY(0),
+                    wScan: char_val,
+                    dwFlags: KEYEVENTF_UNICODE,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        };
+        let key_up = INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: windows::Win32::UI::Input::KeyboardAndMouse::INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: windows::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY(0),
+                    wScan: char_val,
+                    dwFlags: KEYEVENTF_UNICODE
+                        | windows::Win32::UI::Input::KeyboardAndMouse::KEYEVENTF_KEYUP,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        };
+        unsafe {
+            SendInput(&[key_down, key_up], std::mem::size_of::<INPUT>() as i32);
+        }
+        // Small delay between characters to prevent dropped inputs in slow apps
+        thread::sleep(Duration::from_millis(1));
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn send_input_chars_win32(_text: &str) {
+    // No-op on non-Windows platforms
+}
+
+/// L4: Configurable backspace delay (default 2ms). Can be updated via set_backspace_delay_ms().
+static BACKSPACE_DELAY_MS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(2);
+
+/// Update the per-backspace delay (L4 fix). Called from settings when user changes the preference.
+#[allow(dead_code)]
+pub fn set_backspace_delay_ms(ms: u64) {
+    BACKSPACE_DELAY_MS.store(ms, std::sync::atomic::Ordering::Relaxed);
+}
+
 /// Simulate backspace key presses to erase the trigger keyword
 pub fn erase_trigger(keyword_len: usize) {
-    let total = keyword_len;
-    for _ in 0..total {
+    let delay = BACKSPACE_DELAY_MS.load(std::sync::atomic::Ordering::Relaxed);
+    for _ in 0..keyword_len {
         simulate_key_press(rdev::Key::Backspace);
-        // Reduced from 10ms to 2ms — most apps process backspace instantly
-        thread::sleep(Duration::from_millis(2));
+        thread::sleep(Duration::from_millis(delay));
     }
-    // Reduced from 50ms to 15ms — just enough for the last backspace to register
+    // Post-erase settle: enough for the last backspace to register in slow apps
     thread::sleep(Duration::from_millis(15));
 }
 
 pub fn inject_text(text: &str) {
     let mut clipboard = None;
-    // Reduced from 10 retries at 100ms each to 3 retries at 30ms each
-    for _ in 0..3 {
+    // M2 fix: exponential backoff (30, 60, 120, 240ms) for apps holding clipboard lock longer
+    let mut wait_ms = 30u64;
+    for _ in 0..4 {
         if let Ok(c) = Clipboard::new() {
             clipboard = Some(c);
             break;
         }
-        thread::sleep(Duration::from_millis(30));
+        thread::sleep(Duration::from_millis(wait_ms));
+        wait_ms = (wait_ms * 2).min(240);
     }
     let mut clipboard = match clipboard {
         Some(c) => c,
         None => {
-            eprintln!("Failed to access clipboard after retries.");
+            // Clipboard unavailable — fall back to SendInput character typing
+            log::warn!("inject_text: clipboard inaccessible, using SendInput fallback");
+            send_input_chars_win32(text);
             return;
         }
     };
@@ -35,19 +101,22 @@ pub fn inject_text(text: &str) {
     // Backup current clipboard content
     let backup = clipboard.get_text().ok();
 
-    // Set the snippet text (with retry)
-    // Reduced from 5 retries at 50ms each to 3 retries at 15ms each
+    // M2 fix: exponential backoff for clipboard set_text
     let mut text_set = false;
-    for _ in 0..3 {
+    let mut wait_ms = 15u64;
+    for _ in 0..4 {
         if clipboard.set_text(text).is_ok() {
             text_set = true;
             break;
         }
-        thread::sleep(Duration::from_millis(15));
+        thread::sleep(Duration::from_millis(wait_ms));
+        wait_ms = (wait_ms * 2).min(120);
     }
 
     if !text_set {
-        eprintln!("Failed to set clipboard text after retries.");
+        // Clipboard write failed — fall back to SendInput
+        log::warn!("inject_text: clipboard write failed, using SendInput fallback");
+        send_input_chars_win32(text);
         return;
     }
 
@@ -55,7 +124,23 @@ pub fn inject_text(text: &str) {
     thread::sleep(Duration::from_millis(10));
 
     // Simulate Ctrl+V
-    simulate_key_combo(rdev::Key::ControlLeft, rdev::Key::KeyV);
+    let ctrl_v_ok = rdev::simulate(&rdev::EventType::KeyPress(rdev::Key::ControlLeft)).is_ok()
+        && rdev::simulate(&rdev::EventType::KeyPress(rdev::Key::KeyV)).is_ok();
+    thread::sleep(Duration::from_millis(2));
+    let _ = rdev::simulate(&rdev::EventType::KeyRelease(rdev::Key::KeyV));
+    thread::sleep(Duration::from_millis(2));
+    let _ = rdev::simulate(&rdev::EventType::KeyRelease(rdev::Key::ControlLeft));
+
+    if !ctrl_v_ok {
+        // Ctrl+V simulation itself failed — try SendInput as secondary fallback
+        log::warn!("inject_text: Ctrl+V simulation failed, using SendInput fallback");
+        // Restore clipboard first
+        if let Some(original) = backup {
+            let _ = clipboard.set_text(&original);
+        }
+        send_input_chars_win32(text);
+        return;
+    }
 
     // Reduced from 300ms to 80ms — most apps process paste within 50-100ms
     thread::sleep(Duration::from_millis(80));

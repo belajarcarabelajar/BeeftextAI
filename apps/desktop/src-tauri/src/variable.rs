@@ -218,7 +218,17 @@ fn run_powershell_script_blocking(_path: &str, _timeout_ms: u64) -> String {
 ///            #{upper:text}, #{lower:text}, #{trim:text}, #{cursor},
 ///            #{input:desc}, #{powershell:path}, #{powershell:path:timeoutMs},
 ///            #{key:keyname}, #{key:keyname:count}, #{shortcut:mod+key}, #{delay:ms}
+/// depth: recursion depth for #{combo:}, max 5 (M3 fix)
 pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<ExpandedText, String> {
+    evaluate_variables_inner(text, ollama, 0).await
+}
+
+fn evaluate_variables_inner<'a>(
+    text: &'a str,
+    ollama: &'a OllamaClient,
+    depth: usize,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<ExpandedText, String>> + Send + 'a>> {
+    Box::pin(async move {
     let mut result = text.to_string();
     let mut delays = Vec::new();
 
@@ -331,30 +341,44 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
         result = result.replace(full_match, text_val.trim());
     }
 
-    // #{ai:prompt} — generate text via Ollama
+    // #{ai:prompt} — generate text via Ollama (with 30s timeout — L3 fix)
     let ai_result = result.clone();
     for cap in RE_AI.captures_iter(&ai_result) {
         let full_match = &cap[0];
         let prompt = &cap[1];
-        match ollama.generate(prompt, None).await {
-            Ok(ai_text) => {
+        let gen_future = ollama.generate(prompt, None);
+        match tokio::time::timeout(std::time::Duration::from_secs(30), gen_future).await {
+            Ok(Ok(ai_text)) => {
                 result = result.replace(full_match, &ai_text);
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 eprintln!("AI variable error: {}", e);
                 result = result.replace(full_match, &format!("[AI Error: {}]", e));
+            }
+            Err(_timeout) => {
+                log::error!("#{{ai:prompt}} timed out after 30s");
+                result = result.replace(full_match, "[AI Error: timeout]");
             }
         }
     }
 
-    // #{combo:keyword} — reference another snippet
+    // #{combo:keyword} — reference another snippet, expanding its variables recursively (M3 fix)
     let combo_result = result.clone();
     for cap in RE_COMBO.captures_iter(&combo_result) {
         let full_match = &cap[0];
         let keyword = &cap[1];
         if let Ok(snippets) = crate::store::get_all_snippets() {
             if let Some(referenced) = snippets.iter().find(|s| s.keyword == keyword) {
-                result = result.replace(full_match, &referenced.snippet);
+                if depth < 5 {
+                    // Recursively expand variables inside the combo snippet (depth-limited)
+                    match evaluate_variables_inner(&referenced.snippet, ollama, depth + 1).await {
+                        Ok(expanded) => result = result.replace(full_match, &expanded.text),
+                        Err(_) => result = result.replace(full_match, &referenced.snippet),
+                    }
+                } else {
+                    // Max depth reached — substitute raw text to avoid infinite recursion
+                    result = result.replace(full_match, &referenced.snippet);
+                }
             }
         }
     }
@@ -458,4 +482,5 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
     };
 
     Ok(ExpandedText { text: result, cursor_offset, delays })
+    }) // closes Box::pin(async move {
 }
