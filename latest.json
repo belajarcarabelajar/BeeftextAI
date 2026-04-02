@@ -1,12 +1,11 @@
 {
-  "version": "0.4.4",
-  "notes": "## v0.4.4 - Performance and Robustness fixes\n- H1-H6: Critical concurrency fixes and SQLite WAL enabled.\n- M1-M7: Clipboard fallbacks, exponential backoffs, and combo expansions.\n- L1-L7: Numpad keys, gracefully app shutdown, timing metrics, and backspace configs.",
-  "pub_date": "2026-04-02T18:07:00Z",
+  "version": "0.4.5",
+  "notes": "## v0.4.5 - AI Chat Image Handling & UI Enhancements\n- Fixed issue where AI Chat couldn't acknowledge attached images.\n- Added hidden system context for image recognition (non-OCR models).\n- Improved Chat UI with amber-to-burnt-orange gradients (WCAG AA compliant).\n- Enhanced dark mode contrast and added inline markdown parsing for code blocks.\n- Fixed version synchronization and automated deployment scripts.",
+  "pub_date": "2026-04-02T18:55:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3Zkd2ZHSWViSEU3WFEvWDk0VXU0Yk9XTmhqOTBoUlp1WUk0azFJS253YmltTnAvRlplbjF5WXZ1TmM5SVJmNVVMc3pBcStOMUF6UTFvSHdXOENab1FnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MTI4MDA0CWZpbGU6QmVlZlRleHQuQUlfMC40LjRfeDY0LXNldHVwLmV4ZQo4cXI2a0RpQXdqSU9uMXI0OHQ1UEhSeGNjWXNoV3NIWnZjYWQvekFOdSsrTW5wRXBJMDJkMjgxQXVDUGhnNnZsY0s0MSt2UHZWY3VEVFdxckJzL0ZEUT09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.4.4/BeefText.AI_0.4.4_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxLzVzUjZ4ZHE1YWhIVHZYUjU5d1Blek9JZVJ2ZGVWSFREZz09CnRydXN0ZWQgY29tbWVudDogdGltZXN0YW1wOjE3NzUxMzQ2MzYJZmlsZTpCZWVmVGV4dC5BSV8wLjQuNV94NjQtc2V0dXAuZXhlCkt6RjAyUThnZ3V4L1BMNHR0ck84ZGlKMWVpOGM1UmNnSFF2UjBDRlNjVkdYRWllWkdqek15OGM0ckpUWHlIdG5hR0gxNGNGR3YvZFJvTDEwZFZBTFREZz09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.4.5/BeefText.AI_0.4.5_x64-setup.exe"
     }
   }
 }
-
