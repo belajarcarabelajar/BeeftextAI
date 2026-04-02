@@ -25,6 +25,7 @@ reqwest = { version = "0.12", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
 arboard = "3"
 rdev = "0.5"
+windows = { version = "0.61", features = ["Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging", "Win32_Foundation"] }
 dirs = "6"
 image = "0.25"
 base64 = "0.22"
