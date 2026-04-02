@@ -156,7 +156,7 @@ export default function App() {
 // Snippets Page — with Group sidebar
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function SnippetsPage({ showToast, showForm, setShowForm, editingSnippet, setEditingSnippet }: {
+function SnippetsPage({ showToast, showForm, setShowForm, editingSnippet, setEditingSnippet, t }: {
   showToast: (m: string, t?: "success" | "error") => void;
   showForm: boolean;
   setShowForm: (v: boolean) => void;
