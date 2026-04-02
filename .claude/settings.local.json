@@ -65,7 +65,9 @@
       "Bash(cd C:/Users/Tedi Rahmat/BeeftextAI)",
       "Bash(powershell:*)",
       "Bash(gh auth:*)",
-      "Bash(git show:*)"
+      "Bash(git show:*)",
+      "Bash(node -e \"console.log\\(require\\('./package.json'\\).version\\)\")",
+      "Bash(rustc --version)"
     ]
   }
 }

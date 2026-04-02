@@ -1,11 +1,11 @@
 {
-  "version": "0.4.2",
-  "notes": "## QA Fixes\n- HIGH-002: Replace std::sync::Mutex with parking_lot::Mutex in store.rs (removes 22 unwrap calls)\n- LOW-004: Bounded thread pool in trigger.rs (max 8 concurrent substitution threads)\n- LOW-003: Split App.tsx into components/ (SnippetEditor, SettingsPanel)\n- LOW-001: Remove committed log.txt artifact\n- LOW-002: Remove production console.log from sendMessage\n- LOW-005: Move hardcoded Indonesian confirm dialogs to i18n\n- LOW-006: Clarify docs/Variables.md unsupported key documentation\n- HIGH-001: Add UTF-8 safe StrExt trait (char_count, truncate_chars)\n- MED-001: Pre-compile all 17 regex patterns with once_cell::sync::Lazy",
-  "pub_date": "2026-04-02T12:20:00Z",
+  "version": "0.4.3",
+  "notes": "## QA Fixes v0.4.3\n- BLK-001: Removed private signatures from git tree\n- BLK-002: Restricted Command Injection by enforcing extensions and absolute paths\n- HIGH-004: Added regression coverage testing\n- HIGH-005: Deployed CI/CD pipeline",
+  "pub_date": "2026-04-02T13:20:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3BxN0M0RWhSc2xaY0NoYXFwWjBUNWZSNjNMTDRyUlBGUHRxS2lzNVhseDVDRXJiMmZmcXFyM0RYOFZzS1Z6WkZjOFh2bDU2cGl1V3lrL3FROSs3ZndRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MTA5MDQxCWZpbGU6QmVlZlRleHQuQUlfMC40LjJfeDY0LXNldHVwLmV4ZQpYWDhwMm1COGZWSUh6T2JTeDVhdWdqUkFJcllCd3JvdjViSFBTT3hpL1NEVnRvb3crTWJJY2dIL2pjQTdCNWlhQVlmQjR5MnhabTV1WWVSK1RqT01BUT09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.4.2/BeefText.AI_0.4.2_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL2tPMXB2anl5OFljVTRsTzI5WjdsUzBxNGk4bmYveGo5RnE0bFJIZ2lhN3lNUFo5ZGMyNVJGWVU3bEZqN0lrbXd5MEdEUENvc29leFV1cUJkR2hlU2dzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MTEwOTE1CWZpbGU6QmVlZlRleHQuQUlfMC40LjNfeDY0LXNldHVwLmV4ZQoxMUppMnFodGo1cDJiMHp4K3lmUW53L3RDcVQ5R0dLc3AvVkdsZHI1Y292Tms4bXZsNlhBRnRwYjhtTkNOc2NVWUQvYzQ2MkRPVnFiN2NZektPSGxEQT09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.4.3/BeefText.AI_0.4.3_x64-setup.exe"
     }
   }
 }

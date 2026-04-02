@@ -379,6 +379,14 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
             let full_match = cap[0].to_string();
             let path = cap[1].to_string();
             let timeout_ms: u64 = cap.get(2).and_then(|m| m.as_str().parse().ok()).unwrap_or(10000);
+            
+            // Validate the path against command injection
+            let p = std::path::Path::new(&path);
+            if !p.is_absolute() || p.extension().and_then(|s| s.to_str()) != Some("ps1") || !p.exists() {
+                result = result.replace(&full_match, "[Error: Only absolute paths to valid .ps1 files are allowed]");
+                continue;
+            }
+
             let ps_output = tokio::task::spawn_blocking(move || {
                 run_powershell_script_blocking(&path, timeout_ms)
             }).await.unwrap_or_default();
