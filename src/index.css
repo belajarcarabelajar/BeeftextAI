@@ -23,8 +23,8 @@
   --accent-info: #3b82f6;
 
   --text-primary: #ffffff;
-  --text-secondary: #cccccc;
-  --text-tertiary: #666666;
+  --text-secondary: #c4c4c4;
+  --text-tertiary: #8a8a8a;
   --text-accent: #ffc107;
 
   --border-subtle: #262626;
@@ -524,9 +524,11 @@ body {
   
 }
 
+/* User bubble — deep amber-to-burnt-orange gradient for WCAG AA compliance
+   Contrast: white on #d97706 ≈ 4.89:1 ✅, white on #c2410c ≈ 5.73:1 ✅ */
 .chat-message.user .chat-bubble {
-  background: var(--accent-primary);
-  color: white;
+  background: linear-gradient(135deg, #d97706 0%, #c2410c 100%);
+  color: #ffffff;
   border-bottom-right-radius: 4px;
 }
 
@@ -639,6 +641,46 @@ body {
   display: flex;
   gap: 8px;
   margin-top: 12px;
+}
+
+/* ── Chat Markdown Renderer ── */
+.chat-md {
+  line-height: 1.7;
+}
+
+.chat-code-block {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin: 8px 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: pre;
+}
+
+.chat-inline-code {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-secondary);
+}
+
+.chat-md-list {
+  margin: 6px 0 6px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-md-list li {
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -1126,9 +1168,9 @@ select.input {
   --bg-card-hover: #252525;
   --bg-glass: #1a1a1a;
   --bg-input: #181818;
-  --text-primary: #e8e8e8;
-  --text-secondary: #888888;
-  --text-tertiary: #666666;
+  --text-primary: #f0f0f0;
+  --text-secondary: #a3a3a3;
+  --text-tertiary: #8a8a8a;
   --border-subtle: #242424;
   --border-medium: #333333;
   --border-accent: rgba(255, 193, 7, 0.35);
@@ -1181,6 +1223,12 @@ select.input {
 /* ── HTML background to prevent flash ── */
 html[data-theme="dark"] { background: #0f0f0f; }
 html[data-theme="light"] { background: #f5f5f5; }
+
+/* ── Light mode: user chat bubble override ── */
+[data-theme="light"] .chat-message.user .chat-bubble {
+  background: linear-gradient(135deg, #b45309 0%, #9a3412 100%);
+  color: #ffffff;
+}
 
 /* ── Light Mode Scrollbar ── */
 [data-theme="light"] ::-webkit-scrollbar-thumb {

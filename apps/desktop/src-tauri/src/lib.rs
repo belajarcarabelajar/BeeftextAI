@@ -40,6 +40,12 @@ fn get_ollama() -> OllamaClient {
 
 const SYSTEM_PROMPT: &str = r#"You are an AI assistant for BeefText AI, a smart text expander.
 
+### Language Rules
+- Default communication language: Bahasa Indonesia.
+- If the user writes in English, respond in English.
+- If the user writes in Indonesian (Bahasa Indonesia), respond in Indonesian.
+- Always mirror the language of the user's most recent message.
+
 ### Snippet Creation
 When the user wants to create/save a snippet, respond with:
 {"keyword": "!abc", "snippet": "text", "name": "Name", "description": "Desc", "group": "GroupName", "content_type": "Text|Image|Both", "image_data": "base64_or_null"}
@@ -266,7 +272,16 @@ async fn chat_with_ai(message: String, image_data: Option<String>) -> Result<Str
     messages.reverse();
     messages.insert(0, sys_msg);
 
-    messages.push(ChatMessage { role: "user".to_string(), content: message_truncated, images: None });
+    // Strip "data:image/...;base64," prefix — Ollama expects raw base64 only
+    let images = image_data.as_ref().map(|data| {
+        let b64 = if let Some(pos) = data.find(',') {
+            data[pos + 1..].to_string()
+        } else {
+            data.clone()
+        };
+        vec![b64]
+    });
+    messages.push(ChatMessage { role: "user".to_string(), content: message_truncated, images });
 
     let total_tokens: usize = messages.iter().map(|m| estimate_tokens(&m.content) + 10).sum();
     eprintln!("[TOKEN] total request | tokens: ~{} | messages: {}", total_tokens, messages.len());
