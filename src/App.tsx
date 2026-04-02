@@ -1000,8 +1000,9 @@ function renderInline(text: string, baseKey: number): React.ReactNode[] {
 function MessageContent({ content, showToast }: { content: string; showToast: (m: string, t?: "success" | "error") => void }) {
   const snippetJson = extractSnippetJson(content);
   if (snippetJson) {
-    const textBefore = content.substring(0, content.indexOf("{"));
-    const textAfter = content.substring(content.lastIndexOf("}") + 1);
+    // Strip markdown code fences (```json, ```) that wrap the JSON
+    const textBefore = content.substring(0, content.indexOf("{")).replace(/```\w*\s*$/s, "").trim();
+    const textAfter = content.substring(content.lastIndexOf("}") + 1).replace(/^\s*```/, "").trim();
     const handleSave = async () => {
       try {
         const generatedKeyword = snippetJson.keyword || "//new";
