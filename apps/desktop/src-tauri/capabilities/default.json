@@ -11,11 +11,11 @@
     "fs:default",
     {
       "identifier": "fs:allow-write-text-file",
-      "allow": [{ "path": "**" }]
+      "allow": [{ "path": "$APP/**" }, { "path": "$DOWNLOAD/**" }]
     },
     {
       "identifier": "fs:allow-read-file",
-      "allow": [{ "path": "**" }]
+      "allow": [{ "path": "$APP/**" }, { "path": "$DOWNLOAD/**" }]
     },
     "dialog:default",
     "dialog:allow-save"

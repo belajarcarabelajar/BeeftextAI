@@ -30,7 +30,7 @@ pub fn truncate_to_tokens(text: &str, max_tokens: usize) -> String {
     if estimate_tokens(text) <= max_tokens {
         return text.to_string();
     }
-    // Take roughly max_tokens * 4 chars
+    // Take roughly max_tokens * 3 chars
     let max_chars = max_tokens * CHARS_PER_TOKEN;
     let mut result: String = text.chars().take(max_chars).collect();
     // Try to end at word boundary

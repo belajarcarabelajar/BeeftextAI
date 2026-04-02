@@ -119,6 +119,11 @@ impl OllamaClient {
             num_ctx,
         };
         let resp = self.client.post(&url).json(&req).send().await.map_err(|e| e.to_string())?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(format!("Ollama API error (status {}): {}", status, body));
+        }
         let data: ChatResponse = resp.json().await.map_err(|e| e.to_string())?;
         Ok(data.message)
     }

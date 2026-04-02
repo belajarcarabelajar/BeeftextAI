@@ -8,6 +8,22 @@ use std::sync::atomic::{AtomicBool, Ordering};
 /// Global toggle for substitution notifications
 pub static NOTIFICATIONS_ENABLED: AtomicBool = AtomicBool::new(true);
 
+/// Extension trait for character-aware string operations
+trait StrExt {
+    fn char_count(&self) -> usize;
+    fn truncate_chars(&self, max_chars: usize) -> String;
+}
+
+impl StrExt for String {
+    fn char_count(&self) -> usize {
+        self.chars().count()
+    }
+
+    fn truncate_chars(&self, max_chars: usize) -> String {
+        self.chars().take(max_chars).collect()
+    }
+}
+
 /// Perform the text substitution
 pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
     use crate::snippet::ContentType;
@@ -69,7 +85,7 @@ pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
     let _ = store::update_snippet(&updated);
 
     // Log
-    let preview = if expanded.len() > 50 { format!("{}...", &expanded[..50]) } else { expanded.clone() };
+    let preview = if expanded.char_count() > 50 { format!("{}...", expanded.truncate_chars(50)) } else { expanded.clone() };
     let content_desc = match snippet.content_type {
         ContentType::Text => format!("'{}'", preview),
         ContentType::Image => "[image]".to_string(),
@@ -81,7 +97,7 @@ pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
     if NOTIFICATIONS_ENABLED.load(Ordering::Relaxed) {
         let title = format!("⚡ {}", if snippet.name.is_empty() { &snippet.keyword } else { &snippet.name });
         let body = match snippet.content_type {
-            ContentType::Text => if expanded.len() > 80 { format!("{}...", &expanded[..80]) } else { expanded },
+            ContentType::Text => if expanded.char_count() > 80 { format!("{}...", expanded.truncate_chars(80)) } else { expanded },
             ContentType::Image => "[image]".to_string(),
             ContentType::Both => "[text + image]".to_string(),
         };

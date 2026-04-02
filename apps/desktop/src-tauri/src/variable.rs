@@ -1,9 +1,28 @@
 use chrono::{Local, Duration as ChronoDuration};
 use crate::ollama::OllamaClient;
 use crate::clipboard;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::sync::mpsc;
 use std::process::Command;
+
+static RE_DATETIME_SHIFT: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{dateTime:([+-]\d+[ymdhsz]+):([^}]+)\}").unwrap());
+static RE_DATETIME_SHIFT_PARTS: Lazy<Regex> = Lazy::new(|| Regex::new(r"([+-])(\d+)([ymdhsz])").unwrap());
+static RE_DATETIME: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{dateTime:([^}]+)\}").unwrap());
+static RE_DATE: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{date:([^}]+)\}").unwrap());
+static RE_TIME: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{time:([^}]+)\}").unwrap());
+static RE_ENV: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{envVar:([^}]+)\}").unwrap());
+static RE_UPPER: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{upper:([^}]+)\}").unwrap());
+static RE_LOWER: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{lower:([^}]+)\}").unwrap());
+static RE_TRIM: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{trim:([^}]+)\}").unwrap());
+static RE_AI: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{ai:([^}]+)\}").unwrap());
+static RE_COMBO: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{combo:([^}]+)\}").unwrap());
+static RE_INPUT: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{input:([^}]*)\}").unwrap());
+static RE_POWERSHELL: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{powershell:([^:}]+)(?::(\d+))?\}").unwrap());
+static RE_KEY: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{key:([^:}]+)(?::(\d+))?\}").unwrap());
+static RE_SHORTCUT: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{shortcut:([^}]+)\}").unwrap());
+static RE_DELAY: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{delay:(\d+)\}").unwrap());
+static RE_CURSOR: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{cursor\}").unwrap());
 
 /// Result of evaluating template variables
 pub struct ExpandedText {
@@ -219,15 +238,13 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
 
     // #{dateTime:+offset:format} — date/time with shift (e.g. +1d-2h) BEFORE plain dateTime:format
     {
-        let dt_shift_re = Regex::new(r"#\{dateTime:([+-]\d+[ymdhsz]+):([^}]+)\}").unwrap();
         let dt_result = result.clone();
-        for cap in dt_shift_re.captures_iter(&dt_result) {
+        for cap in RE_DATETIME_SHIFT.captures_iter(&dt_result) {
             let full_match = &cap[0];
             let shift_str = &cap[1];
             let format = &cap[2];
             let mut offset = ChronoDuration::zero();
-            let re_shift_parts = Regex::new(r"([+-])(\d+)([ymdhsz])").unwrap();
-            for part_cap in re_shift_parts.captures_iter(shift_str) {
+            for part_cap in RE_DATETIME_SHIFT_PARTS.captures_iter(shift_str) {
                 let sign = if &part_cap[1] == "-" { -1 } else { 1 };
                 let value: i64 = part_cap[2].parse().unwrap_or(0);
                 let unit = &part_cap[3];
@@ -251,9 +268,8 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
     }
 
     // #{dateTime:format} — custom date/time format (plain, no shift)
-    let dt_re = Regex::new(r"#\{dateTime:([^}]+)\}").unwrap();
     let dt_result = result.clone();
-    for cap in dt_re.captures_iter(&dt_result) {
+    for cap in RE_DATETIME.captures_iter(&dt_result) {
         let full_match = &cap[0];
         // Skip if this is actually a shift variant (already handled above)
         if full_match.starts_with("#{dateTime:+") || full_match.starts_with("#{dateTime:-") {
@@ -265,9 +281,8 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
     }
 
     // #{date:format} — custom date format
-    let date_re = Regex::new(r"#\{date:([^}]+)\}").unwrap();
     let date_result = result.clone();
-    for cap in date_re.captures_iter(&date_result) {
+    for cap in RE_DATE.captures_iter(&date_result) {
         let full_match = &cap[0];
         let format = &cap[1];
         let formatted = Local::now().format(format).to_string();
@@ -275,9 +290,8 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
     }
 
     // #{time:format} — custom time format
-    let time_re = Regex::new(r"#\{time:([^}]+)\}").unwrap();
     let time_result = result.clone();
-    for cap in time_re.captures_iter(&time_result) {
+    for cap in RE_TIME.captures_iter(&time_result) {
         let full_match = &cap[0];
         let format = &cap[1];
         let formatted = Local::now().format(format).to_string();
@@ -285,9 +299,8 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
     }
 
     // #{envVar:name} — environment variable
-    let env_re = Regex::new(r"#\{envVar:([^}]+)\}").unwrap();
     let env_result = result.clone();
-    for cap in env_re.captures_iter(&env_result) {
+    for cap in RE_ENV.captures_iter(&env_result) {
         let full_match = &cap[0];
         let var_name = &cap[1];
         let value = std::env::var(var_name).unwrap_or_default();
@@ -295,36 +308,32 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
     }
 
     // #{upper:text} — uppercase
-    let upper_re = Regex::new(r"#\{upper:([^}]+)\}").unwrap();
     let upper_result = result.clone();
-    for cap in upper_re.captures_iter(&upper_result) {
+    for cap in RE_UPPER.captures_iter(&upper_result) {
         let full_match = &cap[0];
         let text_val = &cap[1];
         result = result.replace(full_match, &text_val.to_uppercase());
     }
 
     // #{lower:text} — lowercase
-    let lower_re = Regex::new(r"#\{lower:([^}]+)\}").unwrap();
     let lower_result = result.clone();
-    for cap in lower_re.captures_iter(&lower_result) {
+    for cap in RE_LOWER.captures_iter(&lower_result) {
         let full_match = &cap[0];
         let text_val = &cap[1];
         result = result.replace(full_match, &text_val.to_lowercase());
     }
 
     // #{trim:text} — trim whitespace
-    let trim_re = Regex::new(r"#\{trim:([^}]+)\}").unwrap();
     let trim_result = result.clone();
-    for cap in trim_re.captures_iter(&trim_result) {
+    for cap in RE_TRIM.captures_iter(&trim_result) {
         let full_match = &cap[0];
         let text_val = &cap[1];
         result = result.replace(full_match, text_val.trim());
     }
 
     // #{ai:prompt} — generate text via Ollama
-    let ai_re = Regex::new(r"#\{ai:([^}]+)\}").unwrap();
     let ai_result = result.clone();
-    for cap in ai_re.captures_iter(&ai_result) {
+    for cap in RE_AI.captures_iter(&ai_result) {
         let full_match = &cap[0];
         let prompt = &cap[1];
         match ollama.generate(prompt, None).await {
@@ -339,9 +348,8 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
     }
 
     // #{combo:keyword} — reference another snippet
-    let combo_re = Regex::new(r"#\{combo:([^}]+)\}").unwrap();
     let combo_result = result.clone();
-    for cap in combo_re.captures_iter(&combo_result) {
+    for cap in RE_COMBO.captures_iter(&combo_result) {
         let full_match = &cap[0];
         let keyword = &cap[1];
         if let Ok(snippets) = crate::store::get_all_snippets() {
@@ -353,9 +361,8 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
 
     // #{input:description} — interactive input dialog (blocking via PowerShell)
     {
-        let input_re = Regex::new(r"#\{input:([^}]*)\}").unwrap();
         let input_result = result.clone();
-        for cap in input_re.captures_iter(&input_result) {
+        for cap in RE_INPUT.captures_iter(&input_result) {
             let full_match = cap[0].to_string();
             let desc = cap[1].to_string();
             let input_value = tokio::task::spawn_blocking(move || {
@@ -367,9 +374,8 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
 
     // #{powershell:path} and #{powershell:path:timeoutMs}
     {
-        let ps_re = Regex::new(r"#\{powershell:([^:}]+)(?::(\d+))?\}").unwrap();
         let ps_result = result.clone();
-        for cap in ps_re.captures_iter(&ps_result) {
+        for cap in RE_POWERSHELL.captures_iter(&ps_result) {
             let full_match = cap[0].to_string();
             let path = cap[1].to_string();
             let timeout_ms: u64 = cap.get(2).and_then(|m| m.as_str().parse().ok()).unwrap_or(10000);
@@ -382,9 +388,8 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
 
     // #{key:keyname} and #{key:keyname:count}
     {
-        let key_re = Regex::new(r"#\{key:([^:}]+)(?::(\d+))?\}").unwrap();
         let key_result = result.clone();
-        for cap in key_re.captures_iter(&key_result) {
+        for cap in RE_KEY.captures_iter(&key_result) {
             let full_match = cap[0].to_string();
             let key_name = &cap[1];
             let count: usize = cap.get(2).and_then(|m| m.as_str().parse().ok()).unwrap_or(1);
@@ -402,9 +407,8 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
 
     // #{shortcut:mod+key} — e.g. #{shortcut:Ctrl+Shift+J}
     {
-        let shortcut_re = Regex::new(r"#\{shortcut:([^}]+)\}").unwrap();
         let shortcut_result = result.clone();
-        for cap in shortcut_re.captures_iter(&shortcut_result) {
+        for cap in RE_SHORTCUT.captures_iter(&shortcut_result) {
             let full_match = cap[0].to_string();
             let shortcut_str = &cap[1];
             if let Some((modifiers, key)) = parse_shortcut(shortcut_str) {
@@ -416,9 +420,8 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
 
     // #{delay:ms} — collect delays to execute later (not evaluated here)
     {
-        let delay_re = Regex::new(r"#\{delay:(\d+)\}").unwrap();
         let delay_result = result.clone();
-        for cap in delay_re.captures_iter(&delay_result) {
+        for cap in RE_DELAY.captures_iter(&delay_result) {
             let full_match = cap[0].to_string();
             if let Ok(ms) = cap[1].parse::<u64>() {
                 delays.push(ms);
@@ -428,8 +431,7 @@ pub async fn evaluate_variables(text: &str, ollama: &OllamaClient) -> Result<Exp
     }
 
     // #{cursor} — cursor position marker
-    let cursor_re = Regex::new(r"#\{cursor\}").unwrap();
-    let cursor_count = cursor_re.find_iter(&result).count();
+    let cursor_count = RE_CURSOR.find_iter(&result).count();
     if cursor_count > 1 {
         return Err("Only one #{cursor} marker is allowed".to_string());
     }

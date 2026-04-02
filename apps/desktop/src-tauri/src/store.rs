@@ -1,7 +1,7 @@
 use crate::snippet::Snippet;
 use crate::trigger;
 use rusqlite::{Connection, params};
-use std::sync::Mutex;
+use parking_lot::Mutex;
 use once_cell::sync::Lazy;
 use crate::group::Group;
 
@@ -75,13 +75,13 @@ pub fn init_db(db_path: &str) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
 
-    *DB.lock().unwrap() = Some(conn);
+    *DB.lock() = Some(conn);
     Ok(())
 }
 
 /// Get all snippets
 pub fn get_all_snippets() -> Result<Vec<Snippet>, String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     
     let mut stmt = conn.prepare(
@@ -123,7 +123,7 @@ pub fn get_all_snippets() -> Result<Vec<Snippet>, String> {
 
 /// Add a new snippet
 pub fn add_snippet(s: &Snippet) -> Result<(), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let mm = format!("{:?}", s.matching_mode);
     let cs = format!("{:?}", s.case_sensitivity);
@@ -140,7 +140,7 @@ pub fn add_snippet(s: &Snippet) -> Result<(), String> {
 
 /// Update an existing snippet
 pub fn update_snippet(s: &Snippet) -> Result<(), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let mm = format!("{:?}", s.matching_mode);
     let cs = format!("{:?}", s.case_sensitivity);
@@ -156,7 +156,7 @@ pub fn update_snippet(s: &Snippet) -> Result<(), String> {
 
 /// Delete a snippet
 pub fn delete_snippet(uuid: &str) -> Result<(), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     conn.execute("DELETE FROM snippets WHERE uuid = ?1", params![uuid]).map_err(|e| e.to_string())?;
     drop(guard);
@@ -166,7 +166,7 @@ pub fn delete_snippet(uuid: &str) -> Result<(), String> {
 
 /// Get all groups
 pub fn get_all_groups() -> Result<Vec<Group>, String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let mut stmt = conn.prepare(
         "SELECT uuid, name, description, enabled, created_at, modified_at FROM groups ORDER BY name"
@@ -186,7 +186,7 @@ pub fn get_all_groups() -> Result<Vec<Group>, String> {
 
 /// Add a new group
 pub fn add_group(g: &Group) -> Result<(), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     conn.execute(
         "INSERT INTO groups (uuid, name, description, enabled, created_at, modified_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -199,7 +199,7 @@ pub fn add_group(g: &Group) -> Result<(), String> {
 
 /// Update a group
 pub fn update_group(g: &Group) -> Result<(), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     conn.execute(
         "UPDATE groups SET name=?1, description=?2, enabled=?3, modified_at=?4 WHERE uuid=?5",
@@ -212,7 +212,7 @@ pub fn update_group(g: &Group) -> Result<(), String> {
 
 /// Delete a group and optionally all snippets inside it
 pub fn delete_group(uuid: &str, delete_snippets: bool) -> Result<(), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     if delete_snippets {
         conn.execute("DELETE FROM snippets WHERE group_id = ?1", params![uuid]).map_err(|e| e.to_string())?;
@@ -228,7 +228,7 @@ pub fn delete_group(uuid: &str, delete_snippets: bool) -> Result<(), String> {
 
 /// Delete all snippets in a specific group
 pub fn delete_snippets_in_group(group_uuid: &str) -> Result<usize, String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let count = conn.execute("DELETE FROM snippets WHERE group_id = ?1", params![group_uuid]).map_err(|e| e.to_string())?;
     drop(guard);
@@ -238,7 +238,7 @@ pub fn delete_snippets_in_group(group_uuid: &str) -> Result<usize, String> {
 
 /// Save an embedding for a snippet
 pub fn save_embedding(snippet_uuid: &str, embedding: &[f32]) -> Result<(), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let bytes: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
     conn.execute(
@@ -250,7 +250,7 @@ pub fn save_embedding(snippet_uuid: &str, embedding: &[f32]) -> Result<(), Strin
 
 /// Get all snippet embeddings for semantic search
 pub fn get_all_embeddings() -> Result<Vec<(String, Vec<f32>)>, String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let mut stmt = conn.prepare(
         "SELECT uuid, embedding FROM snippets WHERE embedding IS NOT NULL"
@@ -268,7 +268,7 @@ pub fn get_all_embeddings() -> Result<Vec<(String, Vec<f32>)>, String> {
 
 /// Save a chat message
 pub fn save_chat_message(role: &str, content: &str) -> Result<(), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     conn.execute(
         "INSERT INTO chat_history (role, content, created_at) VALUES (?1, ?2, ?3)",
@@ -279,7 +279,7 @@ pub fn save_chat_message(role: &str, content: &str) -> Result<(), String> {
 
 /// Get recent chat history
 pub fn get_chat_history(limit: i64) -> Result<Vec<(String, String)>, String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let mut stmt = conn.prepare(
         "SELECT role, content FROM chat_history ORDER BY id DESC LIMIT ?1"
@@ -294,7 +294,7 @@ pub fn get_chat_history(limit: i64) -> Result<Vec<(String, String)>, String> {
 
 /// Clear chat history
 pub fn clear_chat_history() -> Result<(), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     conn.execute("DELETE FROM chat_history", []).map_err(|e| e.to_string())?;
     Ok(())
@@ -302,7 +302,7 @@ pub fn clear_chat_history() -> Result<(), String> {
 
 /// Get a preference value
 pub fn get_preference(key: &str) -> Result<Option<String>, String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let mut stmt = conn.prepare("SELECT value FROM preferences WHERE key = ?1").map_err(|e| e.to_string())?;
     let mut rows = stmt.query(params![key]).map_err(|e| e.to_string())?;
@@ -315,7 +315,7 @@ pub fn get_preference(key: &str) -> Result<Option<String>, String> {
 
 /// Set a preference value
 pub fn set_preference(key: &str, value: &str) -> Result<(), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     conn.execute(
         "INSERT OR REPLACE INTO preferences (key, value) VALUES (?1, ?2)",
@@ -326,7 +326,7 @@ pub fn set_preference(key: &str, value: &str) -> Result<(), String> {
 
 /// Toggle snippet enabled/disabled
 pub fn toggle_snippet_enabled(uuid: &str, enabled: bool) -> Result<(), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     conn.execute(
         "UPDATE snippets SET enabled = ?1, modified_at = ?2 WHERE uuid = ?3",
@@ -339,7 +339,7 @@ pub fn toggle_snippet_enabled(uuid: &str, enabled: bool) -> Result<(), String> {
 
 /// Get snippet count by group
 pub fn get_snippet_count_by_group() -> Result<Vec<(Option<String>, i64)>, String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let mut stmt = conn.prepare(
         "SELECT group_id, COUNT(*) FROM snippets GROUP BY group_id"
@@ -352,7 +352,7 @@ pub fn get_snippet_count_by_group() -> Result<Vec<(Option<String>, i64)>, String
 
 /// Get all preferences
 pub fn get_all_preferences() -> Result<Vec<(String, String)>, String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let mut stmt = conn.prepare("SELECT key, value FROM preferences")
         .map_err(|e| e.to_string())?;
@@ -364,7 +364,7 @@ pub fn get_all_preferences() -> Result<Vec<(String, String)>, String> {
 
 /// Clear all data (for restore)
 pub fn clear_all_data() -> Result<(), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     conn.execute_batch("
         DELETE FROM snippets;
@@ -378,7 +378,7 @@ pub fn clear_all_data() -> Result<(), String> {
 
 /// Get snippet usage stats
 pub fn get_snippet_stats() -> Result<(i64, i64, i64, i64), String> {
-    let guard = DB.lock().unwrap();
+    let guard = DB.lock();
     let conn = guard.as_ref().ok_or("Database not initialized")?;
     let total: i64 = conn.query_row("SELECT COUNT(*) FROM snippets", [], |r| r.get(0))
         .map_err(|e| e.to_string())?;

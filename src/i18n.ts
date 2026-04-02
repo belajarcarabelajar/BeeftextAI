@@ -65,6 +65,9 @@ export const translations = {
     generatedSnippet: "Generated Snippet",
     saveSnippet: "Save Snippet",
 
+    // Dialogs
+    confirmKeywordDuplicate: "Are you sure? The keyword '{0}' has already been used for another snippet.",
+
     // Search
     searchPlaceholder: "Search by keyword, name, or describe what you need...",
     relevance: "Relevance",
@@ -100,7 +103,7 @@ export const translations = {
   id: {
     // Nav / General
     snippets: "Penanda Teks",
-    chat: "SObrolan AI",
+    chat: "Obrolan AI",
     search: "Pencarian Omni",
     settings: "Pengaturan",
     saveSettings: "Simpan Pengaturan",
@@ -161,6 +164,9 @@ export const translations = {
     generatedSnippet: "Teks Dihasilkan",
     saveSnippet: "Simpan Teks",
 
+    // Dialogs
+    confirmKeywordDuplicate: "Apakah kamu yakin? Kata kunci '{0}' sudah pernah digunakan untuk snippet lainnya.",
+
     // Search
     searchPlaceholder: "Cari dengan kata kunci, nama, atau deskripsikan kebutuhan Anda...",
     relevance: "Relevansi",
@@ -196,10 +202,13 @@ export const translations = {
 };
 
 export function useTranslation(lang: Language) {
-  return (key: keyof typeof translations.en) => {
-    if (lang === "en" || lang === "both") {
-      return translations.en[key];
-    }
-    return translations.id[key] || translations.en[key];
+  return (key: keyof typeof translations.en, ...args: string[]) => {
+    let text = (lang === "en" || lang === "both")
+      ? translations.en[key]
+      : translations.id[key] || translations.en[key];
+    args.forEach((arg, i) => {
+      text = text.replace(`{${i}}`, arg);
+    });
+    return text;
   };
 }

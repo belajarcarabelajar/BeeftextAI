@@ -3,13 +3,17 @@ use crate::ollama::OllamaClient;
 use crate::snippet::Snippet;
 use crate::store;
 use parking_lot::Mutex;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
 /// Debounce delay in milliseconds — wait this long after last keystroke before checking
 const DEBOUNCE_DELAY_MS: u64 = 100;
+
+/// Maximum concurrent snippet-substitution threads (prevents unbounded spawn)
+const MAX_CONCURRENT_SUBSTITUTIONS: usize = 8;
+static THREAD_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 /// Persistent worker state shared across the module
 static WORKER_STATE: WorkerState = WorkerState::new();
@@ -128,7 +132,12 @@ pub fn ensure_worker_running() {
                     // Debounce window elapsed — process pending buffer if any
                     if let Some(buffer) = pending_buffer.take() {
                         last_trigger_time = None;
-                        // Process on a separate thread so worker stays responsive
+                        // Limit concurrent substitution threads — skip if at capacity
+                        let current = THREAD_COUNT.load(Ordering::Relaxed);
+                        if current >= MAX_CONCURRENT_SUBSTITUTIONS {
+                            continue;
+                        }
+                        THREAD_COUNT.store(current + 1, Ordering::Relaxed);
                         let ollama = get_ollama_for_worker();
                         let kb = Arc::clone(KEYBOARD_WORKER.get().unwrap());
                         thread::spawn(move || {
@@ -139,6 +148,7 @@ pub fn ensure_worker_running() {
                             rt.block_on(async {
                                 check_and_substitute_internal(&buffer, &ollama, &kb).await;
                             });
+                            THREAD_COUNT.fetch_sub(1, Ordering::Relaxed);
                         });
                     }
                 }
@@ -157,11 +167,7 @@ pub fn ensure_worker_running() {
 
 /// Get ollama client for worker thread
 fn get_ollama_for_worker() -> OllamaClient {
-    OllamaClient::new(
-        "http://localhost:11434".to_string(),
-        "nemotron-3.5-super:8b".to_string(),
-        "nomic-embed-text".to_string(),
-    )
+    crate::get_ollama()
 }
 
 /// Keyboard state reference for worker thread
@@ -205,6 +211,13 @@ async fn check_and_substitute_internal(
             kb.clear_buffer();
             kb.set_active(false); // Prevent simulated keystrokes from being captured
 
+            // Limit concurrent substitution threads — skip if at capacity
+            let current = THREAD_COUNT.load(Ordering::Relaxed);
+            if current >= MAX_CONCURRENT_SUBSTITUTIONS {
+                return true; // At capacity — skip this match
+            }
+            THREAD_COUNT.store(current + 1, Ordering::Relaxed);
+
             // Perform substitution on a separate thread (clipboard ops are blocking)
             let snippet_clone = snippet.clone();
             let ollama_clone = ollama.clone();
@@ -218,6 +231,7 @@ async fn check_and_substitute_internal(
                     perform_substitution(&snippet_clone, &ollama_clone).await;
                 });
                 kb_clone.set_active(true); // Re-enable keyboard hook
+                THREAD_COUNT.fetch_sub(1, Ordering::Relaxed);
             });
 
             return true;
