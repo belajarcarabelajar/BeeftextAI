@@ -166,7 +166,8 @@ fn send_input_chars_win32(text: &str) {
             send_unicode_char(high_surrogate);
             send_unicode_char(low_surrogate);
         }
-        thread::sleep(Duration::from_millis(1));
+        // Rapid-fire: reduced from 10ms to 2ms per char for faster injection
+        thread::sleep(Duration::from_millis(2));
     }
 }
 
@@ -211,8 +212,9 @@ fn send_input_chars_win32(_text: &str) {}
 /// L4: Configurable backspace delay (default 2ms)
 static BACKSPACE_DELAY_MS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(2);
 
-/// P6: Configurable clipboard restore delay (default 500ms, was 80ms — too fast for Electron apps)
-static CLIPBOARD_RESTORE_DELAY_MS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(500);
+/// P6: Configurable clipboard restore delay (default 50ms for rapid-fire, was 500ms — too slow for chained snippets)
+/// Note: Reduced from 500ms to enable AK-47-style rapid-fire snippet chaining (~10-20 snippets/sec)
+static CLIPBOARD_RESTORE_DELAY_MS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(50);
 
 /// Update the per-backspace delay
 #[allow(dead_code)]
@@ -499,7 +501,8 @@ pub fn simulate_key_press(key: rdev::Key) {
     } else {
         // Fallback to rdev for keys we don't have VK mapping for
         let _ = rdev::simulate(&rdev::EventType::KeyPress(key));
-        thread::sleep(Duration::from_millis(1));
+        // Rapid-fire: reduced from 10ms to 2ms per char for faster injection
+        thread::sleep(Duration::from_millis(2));
         let _ = rdev::simulate(&rdev::EventType::KeyRelease(key));
     }
 }
@@ -546,7 +549,8 @@ pub fn simulate_shortcut(modifiers: &[rdev::Key], key: rdev::Key) {
         } else {
             let _ = rdev::simulate(&rdev::EventType::KeyPress(*m));
         }
-        thread::sleep(Duration::from_millis(1));
+        // Rapid-fire: reduced from 10ms to 2ms per char for faster injection
+        thread::sleep(Duration::from_millis(2));
     }
     thread::sleep(Duration::from_millis(2));
 
@@ -567,7 +571,8 @@ pub fn simulate_shortcut(modifiers: &[rdev::Key], key: rdev::Key) {
         } else {
             let _ = rdev::simulate(&rdev::EventType::KeyRelease(*m));
         }
-        thread::sleep(Duration::from_millis(1));
+        // Rapid-fire: reduced from 10ms to 2ms per char for faster injection
+        thread::sleep(Duration::from_millis(2));
     }
 
     restore_modifiers(&pressed_mods);
