@@ -21,12 +21,17 @@ use windows::Win32::UI::WindowsAndMessaging::{
     SetWindowsHookExW, UnhookWindowsHookEx, CallNextHookEx,
     GetMessageW, TranslateMessage, DispatchMessageW,
     WH_KEYBOARD_LL, WH_MOUSE_LL, KBDLLHOOKSTRUCT,
-    MSG,
+    MSG, MsgWaitForMultipleObjectsEx, MWMO_INPUTAVAILABLE,
+    QS_ALLINPUT,
 };
 #[cfg(target_os = "windows")]
 use windows::Win32::Foundation::{WPARAM, LPARAM, LRESULT};
 #[cfg(target_os = "windows")]
 use windows::Win32::System::Threading::GetCurrentThreadId;
+#[cfg(target_os = "windows")]
+use windows::Win32::System::Threading::{GetCurrentThread, SetThreadPriority, THREAD_PRIORITY_ABOVE_NORMAL};
+#[cfg(target_os = "windows")]
+use windows::Win32::System::Power::{SetThreadExecutionState, ES_SYSTEM_REQUIRED, ES_CONTINUOUS};
 
 /// Windows message constants
 #[cfg(target_os = "windows")]
@@ -41,11 +46,8 @@ const WM_RBUTTONDOWN: u32 = 0x0204;
 const WM_MBUTTONDOWN: u32 = 0x0207;
 #[cfg(target_os = "windows")]
 const WM_MOUSEWHEEL: u32 = 0x020A;
-/// Custom message to terminate the hook thread message loop
-#[cfg(target_os = "windows")]
-const WM_QUIT_HOOK: u32 = 0x0012; // WM_QUIT
 
-/// VK codes for combo-breaker keys and modifiers
+/// VK codes
 #[cfg(target_os = "windows")]
 const VK_BACK: u32 = 0x08;
 #[cfg(target_os = "windows")]
@@ -125,6 +127,32 @@ static EXCLUDED_APPS: Mutex<Option<Arc<Mutex<Vec<String>>>>> = Mutex::new(None);
 /// P2: Dead key state — stored as (vkCode, scanCode, keyboardState[256])
 #[cfg(target_os = "windows")]
 static DEAD_KEY: Mutex<Option<(u32, u32, [u8; 256])>> = Mutex::new(None);
+
+/// P1: RAII guard — restores thread execution state on drop.
+#[cfg(target_os = "windows")]
+struct ScopedPowerGuard;
+
+#[cfg(target_os = "windows")]
+impl ScopedPowerGuard {
+    fn new() -> Self {
+        // P1: Tell Windows this thread requires the system to stay awake.
+        // ES_CONTINUOUS | ES_SYSTEM_REQUIRED = prevent sleep until we exit.
+        unsafe {
+            SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
+        }
+        ScopedPowerGuard
+    }
+}
+
+#[cfg(target_os = "windows")]
+impl Drop for ScopedPowerGuard {
+    fn drop(&mut self) {
+        // P1: Release the power management flag — allow sleep again.
+        unsafe {
+            SetThreadExecutionState(ES_CONTINUOUS);
+        }
+    }
+}
 
 /// Shared state for the keyboard hook
 pub struct KeyboardState {
@@ -439,6 +467,11 @@ impl KeyboardState {
                     let tid = GetCurrentThreadId();
                     *hook_thread_id.lock() = Some(tid);
 
+                    // P2: Elevate thread priority so Windows scheduler never deprioritizes
+                    // our hook thread — critical after 5+ hours of idle
+                    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL).ok();
+                    log::info!("Hook thread priority set to ABOVE_NORMAL");
+
                     // P1: Install keyboard hook
                     let kb_hook = SetWindowsHookExW(
                         WH_KEYBOARD_LL,
@@ -473,10 +506,28 @@ impl KeyboardState {
 
                     log::info!("Native Win32 hooks installed (keyboard + mouse)");
 
-                    // P1: Message pump — required for low-level hooks to work.
-                    // Without this, Windows will silently unregister our hooks after ~5 seconds.
+                    // P1: Prevent Windows from entering sleep/hibernate while hook is active.
+                    // ES_CONTINUOUS keeps the flag set until we explicitly clear it.
+                    let _power_guard = ScopedPowerGuard::new();
+                    log::info!("Power management flag set — system will not sleep");
+
+                    // P3: Message pump — replaced by MsgWaitForMultipleObjectsEx
+                    // to periodically refresh scheduler quantum during long idle periods.
                     let mut msg = MSG::default();
-                    while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+                    loop {
+                        // Wake every 30s to keep hook thread quantum fresh (Phase 3)
+                        let result = MsgWaitForMultipleObjectsEx(
+                            None,
+                            30000,
+                            QS_ALLINPUT,
+                            MWMO_INPUTAVAILABLE,
+                        );
+                        if result.0 == 0x00000102u32 { // WAIT_TIMEOUT
+                            continue;
+                        }
+                        if !GetMessageW(&mut msg, None, 0, 0).as_bool() {
+                            break; // WM_QUIT received
+                        }
                         let _ = TranslateMessage(&msg);
                         DispatchMessageW(&msg);
                     }

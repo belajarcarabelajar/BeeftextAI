@@ -639,6 +639,14 @@ pub fn run() {
     // H6: Start write-behind thread for non-blocking last_used_at updates
     store::start_last_used_writer();
 
+    // C3: Keep the main thread awake so the Tauri event loop (WebView, plugins, tray)
+    // is never suspended by Windows power management.
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::System::Power::{SetThreadExecutionState, ES_CONTINUOUS, ES_SYSTEM_REQUIRED};
+        unsafe { let _ = SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED); }
+    }
+
     // Auto-start keyboard hook
     trigger::ensure_worker_running();
     trigger::set_keyboard_state(Arc::clone(&KEYBOARD));
@@ -647,6 +655,21 @@ pub fn run() {
     kb.start_listening(move |buffer| {
         trigger::enqueue_trigger(buffer);
     });
+
+    // C2: Watchdog thread — monitors the keyboard hook thread's liveness.
+    // Waits 60s before monitoring starts to avoid false positives during startup.
+    {
+        let hook_running = Arc::clone(&kb.running);
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(60));
+            loop {
+                std::thread::sleep(std::time::Duration::from_secs(30));
+                if !hook_running.load(std::sync::atomic::Ordering::Relaxed) {
+                    log::error!("[WATCHDOG] Keyboard hook thread has stopped — triggers will not fire!");
+                }
+            }
+        });
+    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
