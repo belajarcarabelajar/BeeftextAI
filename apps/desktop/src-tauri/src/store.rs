@@ -166,6 +166,52 @@ pub fn get_all_snippets() -> Result<Vec<Snippet>, String> {
     results.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
+/// P16: Get only snippets that are eligible for trigger matching.
+/// Filters: enabled=1, keyword is not empty, content_type is Text or Both.
+/// This is used by the trigger cache to avoid loading image-only or disabled snippets.
+pub fn get_trigger_snippets() -> Result<Vec<Snippet>, String> {
+    let guard = DB.lock();
+    let conn = guard.as_ref().ok_or("Database not initialized")?;
+    
+    let mut stmt = conn.prepare(
+        "SELECT uuid, name, keyword, snippet, description, matching_mode, case_sensitivity,
+                group_id, enabled, created_at, modified_at, last_used_at, ai_generated,
+                image_data, content_type
+         FROM snippets
+         WHERE enabled = 1 AND keyword != '' AND content_type != 'Image'
+         ORDER BY modified_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let results = stmt.query_map([], |row| {
+        let mm_str: String = row.get(5)?;
+        let cs_str: String = row.get(6)?;
+        let ct_str: String = row.get(14)?;
+        Ok(Snippet {
+            uuid: row.get(0)?,
+            name: row.get(1)?,
+            keyword: row.get(2)?,
+            snippet: row.get(3)?,
+            description: row.get(4)?,
+            matching_mode: if mm_str == "Loose" { crate::snippet::MatchingMode::Loose } else { crate::snippet::MatchingMode::Strict },
+            case_sensitivity: if cs_str == "CaseInsensitive" { crate::snippet::CaseSensitivity::CaseInsensitive } else { crate::snippet::CaseSensitivity::CaseSensitive },
+            group_id: row.get(7)?,
+            enabled: row.get::<_, i32>(8)? != 0,
+            created_at: row.get(9)?,
+            modified_at: row.get(10)?,
+            last_used_at: row.get(11)?,
+            ai_generated: row.get::<_, i32>(12)? != 0,
+            image_data: row.get(13)?,
+            content_type: match ct_str.as_str() {
+                "Image" => crate::snippet::ContentType::Image,
+                "Both" => crate::snippet::ContentType::Both,
+                _ => crate::snippet::ContentType::Text,
+            },
+        })
+    }).map_err(|e| e.to_string())?;
+
+    results.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
 /// Add a new snippet
 pub fn add_snippet(s: &Snippet) -> Result<(), String> {
     let guard = DB.lock();

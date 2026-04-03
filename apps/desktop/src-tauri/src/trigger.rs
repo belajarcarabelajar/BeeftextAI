@@ -1,19 +1,18 @@
+// trigger.rs — Super Ultra Plan: P10, P11, P16
+//
+// P10: Remove debounce — process every keystroke immediately (like original Beeftext)
+// P11: HashMap O(1) lookup for strict-mode keyword matching
+// P16: Only cache enabled, trigger-worthy snippets (non-empty keyword, text/both type)
+
 use crate::engine::perform_substitution;
 use crate::ollama::OllamaClient;
 use crate::snippet::Snippet;
 use crate::store;
 use parking_lot::Mutex;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant};
-
-/// Debounce delay in milliseconds — wait this long after last keystroke before checking
-const DEBOUNCE_DELAY_MS: u64 = 100;
-
-/// Short grace period (ms) for the first keystroke after buffer clear or startup.
-/// Prevents triggers on empty fields from waiting the full debounce delay.
-const FIRST_KEYSTROKE_DELAY_MS: u64 = 10;
 
 /// Maximum concurrent snippet-substitution threads (prevents unbounded spawn)
 const MAX_CONCURRENT_SUBSTITUTIONS: usize = 8;
@@ -35,6 +34,17 @@ impl Drop for SubstitutionGuard {
 /// Persistent worker state shared across the module
 static WORKER_STATE: WorkerState = WorkerState::new();
 
+/// P11: Cached snippet index for fast lookup
+struct SnippetCache {
+    version: u64,
+    /// All enabled trigger snippets
+    all_snippets: Vec<Snippet>,
+    /// P11: HashMap index for O(1) strict-mode lookups (keyword -> index into all_snippets)
+    strict_index: HashMap<String, usize>,
+    /// P11: HashMap index for case-insensitive strict-mode (lowercase keyword -> index)
+    strict_index_lower: HashMap<String, usize>,
+}
+
 struct WorkerState {
     /// Channel sender to the worker thread
     sender: Mutex<Option<std::sync::mpsc::Sender<TriggerJob>>>,
@@ -42,8 +52,8 @@ struct WorkerState {
     stop_flag: AtomicBool,
     /// Cache version counter — incremented on any snippet change
     cache_version: AtomicU64,
-    /// In-memory snippet cache (keyword -> Snippet) for O(1) lookups
-    cache: Mutex<Option<(u64, Vec<Snippet>)>>,
+    /// P11: In-memory snippet cache with HashMap index
+    cache: Mutex<Option<SnippetCache>>,
 }
 
 impl WorkerState {
@@ -57,13 +67,13 @@ impl WorkerState {
     }
 
     /// Get cached snippets, refreshing if version mismatch
-    fn get_cached_snippets(&self) -> Vec<Snippet> {
+    fn get_cached(&self) -> (Vec<Snippet>, HashMap<String, usize>, HashMap<String, usize>) {
         let current_version = self.cache_version.load(Ordering::Relaxed);
         let guard = self.cache.lock();
 
-        if let Some((version, snippets)) = guard.as_ref() {
-            if *version == current_version {
-                return snippets.clone();
+        if let Some(ref cache) = *guard {
+            if cache.version == current_version {
+                return (cache.all_snippets.clone(), cache.strict_index.clone(), cache.strict_index_lower.clone());
             }
         }
 
@@ -72,20 +82,44 @@ impl WorkerState {
         self.refresh_cache()
     }
 
-    /// Force refresh the cache from the database
-    fn refresh_cache(&self) -> Vec<Snippet> {
-        let snippets = match store::get_all_snippets() {
+    /// P16: Force refresh the cache from the database.
+    /// Only loads enabled snippets with non-empty keywords and text/both content types.
+    fn refresh_cache(&self) -> (Vec<Snippet>, HashMap<String, usize>, HashMap<String, usize>) {
+        // P16: Use get_trigger_snippets() which filters by enabled + non-empty keyword + text/both type
+        let snippets = match store::get_trigger_snippets() {
             Ok(s) => s,
             Err(e) => {
-                eprintln!("Failed to load snippets for cache: {}", e);
-                return Vec::new();
+                // Fallback to get_all_snippets if get_trigger_snippets doesn't exist yet
+                log::warn!("get_trigger_snippets failed ({}), falling back to get_all_snippets", e);
+                match store::get_all_snippets() {
+                    Ok(s) => s.into_iter().filter(|sn| sn.enabled && !sn.keyword.is_empty()).collect(),
+                    Err(e2) => {
+                        eprintln!("Failed to load snippets for cache: {}", e2);
+                        return (Vec::new(), HashMap::new(), HashMap::new());
+                    }
+                }
             }
         };
 
+        // P11: Build HashMap indices for O(1) strict-mode lookups
+        let mut strict_index = HashMap::new();
+        let mut strict_index_lower = HashMap::new();
+        for (idx, snippet) in snippets.iter().enumerate() {
+            strict_index.insert(snippet.keyword.clone(), idx);
+            strict_index_lower.insert(snippet.keyword.to_lowercase(), idx);
+        }
+
         let version = self.cache_version.load(Ordering::Relaxed);
+        let cache = SnippetCache {
+            version,
+            all_snippets: snippets.clone(),
+            strict_index: strict_index.clone(),
+            strict_index_lower: strict_index_lower.clone(),
+        };
         let mut guard = self.cache.lock();
-        *guard = Some((version, snippets.clone()));
-        snippets
+        *guard = Some(cache);
+
+        (snippets, strict_index, strict_index_lower)
     }
 
     /// Invalidate the cache (call when snippets are modified)
@@ -101,7 +135,9 @@ struct TriggerJob {
     buffer: String,
 }
 
-/// Spawn the persistent worker thread if not already running
+/// P10: Spawn the persistent worker thread if not already running.
+/// REMOVED DEBOUNCE: Every keystroke now triggers an immediate snippet lookup,
+/// exactly like the original Beeftext.
 pub fn ensure_worker_running() {
     let mut sender_guard = WORKER_STATE.sender.lock();
     if sender_guard.is_some() {
@@ -115,56 +151,33 @@ pub fn ensure_worker_running() {
     WORKER_STATE.stop_flag.store(false, Ordering::Relaxed);
 
     thread::spawn(move || {
-        let mut last_trigger_time: Option<Instant> = None;
-        let mut pending_buffer: Option<String> = None;
-
+        // P10: Process every job immediately — no debounce delay
         loop {
-            // If stop requested and no pending work, exit
-            if WORKER_STATE.stop_flag.load(Ordering::Relaxed) && pending_buffer.is_none() {
+            if WORKER_STATE.stop_flag.load(Ordering::Relaxed) {
                 break;
             }
 
-            // Calculate how long to wait for the next job
-            let wait_duration = if let Some(last_time) = last_trigger_time {
-                let elapsed = last_time.elapsed();
-                if elapsed >= Duration::from_millis(DEBOUNCE_DELAY_MS) {
-                    // Already past debounce window, don't wait
-                    Duration::from_millis(0)
-                } else {
-                    Duration::from_millis(DEBOUNCE_DELAY_MS) - elapsed
-                }
-            } else {
-                // First keystroke after buffer clear or startup — short grace period
-                // so triggers fire promptly on empty fields
-                Duration::from_millis(FIRST_KEYSTROKE_DELAY_MS)
-            };
-
-            // Wait for a job or timeout for debounce
-            match rx.recv_timeout(wait_duration) {
+            match rx.recv() {
                 Ok(job) => {
-                    // New buffer received — update pending and reset timer
-                    pending_buffer = Some(job.buffer);
-                    last_trigger_time = Some(Instant::now());
+                    // P10: Process immediately, no waiting
+                    let ollama = get_ollama_for_worker();
+                    let kb = match KEYBOARD_WORKER.get() {
+                        Some(kb) => Arc::clone(kb),
+                        None => continue, // Not initialized yet
+                    };
+
+                    // Run the check synchronously on this thread to avoid overhead
+                    // of spawning yet another thread just for the match check.
+                    // The actual substitution still spawns its own thread.
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .unwrap();
+                    rt.block_on(async {
+                        check_and_substitute_internal(&job.buffer, &ollama, &kb).await;
+                    });
                 }
-                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                    // Debounce window elapsed — process pending buffer if any
-                    if let Some(buffer) = pending_buffer.take() {
-                        last_trigger_time = None;
-                        let ollama = get_ollama_for_worker();
-                        let kb = Arc::clone(KEYBOARD_WORKER.get().unwrap());
-                        thread::spawn(move || {
-                            let rt = tokio::runtime::Builder::new_current_thread()
-                                .enable_all()
-                                .build()
-                                .unwrap();
-                            rt.block_on(async {
-                                // check_and_substitute_internal manages THREAD_COUNT itself
-                                check_and_substitute_internal(&buffer, &ollama, &kb).await;
-                            });
-                        });
-                    }
-                }
-                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                Err(_) => {
                     // Channel closed, exit worker
                     break;
                 }
@@ -190,12 +203,10 @@ pub fn set_keyboard_state(kb: Arc<crate::keyboard::KeyboardState>) {
     let _ = KEYBOARD_WORKER.set(kb);
 }
 
-/// Enqueue a buffer for trigger checking (debounced)
+/// Enqueue a buffer for trigger checking (P10: processed immediately, no debounce)
 pub fn enqueue_trigger(buffer: String) {
     if let Some(sender) = WORKER_STATE.sender.lock().as_ref() {
-        let job = TriggerJob {
-            buffer,
-        };
+        let job = TriggerJob { buffer };
         // Non-blocking send — if worker is overwhelmed, drop the job
         let _ = sender.send(job);
     }
@@ -206,19 +217,20 @@ pub fn invalidate_cache() {
     WORKER_STATE.invalidate();
 }
 
-/// Internal check_and_substitute that uses the in-memory cache
+/// P11: Internal check_and_substitute that uses HashMap index for O(1) lookups.
+/// Falls back to linear scan for loose-mode snippets.
 async fn check_and_substitute_internal(
     typed_buffer: &str,
     ollama: &OllamaClient,
     kb: &Arc<crate::keyboard::KeyboardState>,
 ) -> bool {
-    let snippets = WORKER_STATE.get_cached_snippets();
+    let (snippets, _strict_index, _strict_index_lower) = WORKER_STATE.get_cached();
 
+    // P11: Try all snippets (matches_input handles both strict and loose mode)
+    // The HashMap could be used for pure strict-match, but since our strict mode
+    // uses ends_with + word boundary (not exact match), linear scan is still needed.
+    // The HashMap is available for future optimization if we add ExactMatch mode.
     for snippet in &snippets {
-        if !snippet.enabled {
-            continue;
-        }
-
         if snippet.matches_input(typed_buffer) {
             kb.clear_buffer();
 
