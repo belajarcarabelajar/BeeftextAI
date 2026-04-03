@@ -1,11 +1,11 @@
 {
-  "version": "0.4.6",
-  "notes": "## v0.4.6 - Snippet Trigger Fix\n- Fixed trigger not firing on empty input fields — first keystroke now uses 10ms grace period instead of 100ms debounce\n- Triggers in empty fields should fire promptly without needing to type a space first",
-  "pub_date": "2026-04-03T00:20:00Z",
+  "version": "0.5.0",
+  "notes": "## v0.5.0 - Native Win32 Keyboard Hooks & Fragment Rendering\n\n### Core Engine Overhaul\n- Native WH_KEYBOARD_LL hook replacing rdev for maximum compatibility\n- Fragment-based rendering pipeline (Text/KeyPress/Delay/Shortcut)\n- Native SendInput for reliable text injection across all apps\n- Dead key & accent character support\n- UTF-16 surrogate pair support for emoji\n\n### Performance\n- Removed 100ms debounce — instant trigger response\n- HashMap O(1) keyword lookups\n- Filtered DB queries for trigger-eligible snippets only\n\n### Reliability\n- Mouse click combo breaker (WH_MOUSE_LL)\n- Modifier key backup/restore during substitution\n- Configurable clipboard restore delay (500ms)\n- Excluded application support via GetForegroundWindow",
+  "pub_date": "2026-04-03T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL2d6cG5WVnlxenMxUDl2NnlVbkxROUNpRDEvK01vTEptTnJSSE8wRTBqSnRWZjNZNW51UGlKZ1JGcEMwYWIvUUxubmlOYVJ0aTJIaXMvdEtvdjhZU1FnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MTUyNDA1CWZpbGU6QmVlZlRleHQuQUlfMC40LjZfeDY0LXNldHVwLmV4ZQo3a0dpcXgrb1FRNGZhWlBNSE1zV0NGaU14ZmcrRXh3bkx3RjY5dDNvZ0U0QVdWWmtNVktuNTFxaW9iRTh2MCtwbDlGOUFpZ3ZFeHVlK0hVMFRwZ05DQT09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.4.6/BeefText.AI_0.4.6_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3QxYllXZmEza3hhOUFoZGVEakVhVjVMN1VKcitHUUU4UGZ0RXd3bndITGxBeGQxdW5Rb3BaYnFkdENITkR5RWc3MmV2RUNFcDhWZkdIV0Zyb1VGeWcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MjE3NzI0CWZpbGU6QmVlZlRleHQuQUlfMC41LjBfeDY0LXNldHVwLmV4ZQpqQzhlb2l3cHN1bUZjZEg2dlYvZEVRTXZqRTJHSC9JV05CMzhNeUp4cjY1UEN3bHdPOWEzRUdvZ1A4ZnhXYlBNYzhzZ3hkMURtVzM3RWNpaHBNVlpDZz09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.0/BeefText.AI_0.5.0_x64-setup.exe"
     }
   }
 }
