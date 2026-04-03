@@ -51,7 +51,8 @@ fn render_fragments(fragments: &[SnippetFragment], cursor_offset: Option<i32>) {
                 if !text_accumulator.is_empty() {
                     clipboard::inject_text(&text_accumulator);
                     text_accumulator.clear();
-                    std::thread::sleep(std::time::Duration::from_millis(30));
+                    // Rapid-fire: reduced from 30ms to 10ms for faster fragment chaining
+                    std::thread::sleep(std::time::Duration::from_millis(10));
                 }
                 // Simulate key press(es)
                 for _ in 0..*count {
@@ -64,7 +65,8 @@ fn render_fragments(fragments: &[SnippetFragment], cursor_offset: Option<i32>) {
                 if !text_accumulator.is_empty() {
                     clipboard::inject_text(&text_accumulator);
                     text_accumulator.clear();
-                    std::thread::sleep(std::time::Duration::from_millis(30));
+                    // Rapid-fire: reduced from 30ms to 10ms for faster fragment chaining
+                    std::thread::sleep(std::time::Duration::from_millis(10));
                 }
                 std::thread::sleep(std::time::Duration::from_millis(*ms));
             }
@@ -73,7 +75,8 @@ fn render_fragments(fragments: &[SnippetFragment], cursor_offset: Option<i32>) {
                 if !text_accumulator.is_empty() {
                     clipboard::inject_text(&text_accumulator);
                     text_accumulator.clear();
-                    std::thread::sleep(std::time::Duration::from_millis(30));
+                    // Rapid-fire: reduced from 30ms to 10ms for faster fragment chaining
+                    std::thread::sleep(std::time::Duration::from_millis(10));
                 }
                 clipboard::simulate_shortcut(modifiers, *key);
                 std::thread::sleep(std::time::Duration::from_millis(30));

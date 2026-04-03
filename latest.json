@@ -1,11 +1,11 @@
 {
-  "version": "0.5.1",
-  "notes": "## v0.5.1 - Background Readiness Guarantee\n\n### Reliability\n- **Power Management Guard**: Hook thread now calls `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)` to prevent Windows from sleeping/hibernating while the app is running. App stays responsive after 5+ hours idle.\n- **Thread Priority Boost**: Hook thread now runs at `THREAD_PRIORITY_ABOVE_NORMAL` so the Windows scheduler never deprioritizes it during long idle periods.\n- **Periodic Wake**: Message pump now uses `MsgWaitForMultipleObjectsEx` with 30-second timeout to keep scheduler quantum fresh.\n- **Watchdog Thread**: Background watchdog monitors hook thread liveness every 30 seconds and logs fatal errors if it dies.\n- **Main Thread Power Guard**: Tauri event loop thread also protected from power suspension.",
-  "pub_date": "2026-04-03T15:30:00Z",
+  "version": "0.5.2",
+  "notes": "## v0.5.2 - Rapid-Fire Snippet Trigger Optimization\n\n### Performance\n- **10x Faster Clipboard Restore**: Reduced from 500ms to 50ms for AK-47 style rapid-fire snippet chaining\n- **Faster Fragment Flush**: Reduced from 30ms to 10ms between text fragments\n- **SendInput Optimization**: Reduced per-character delay for faster text injection\n\n### Impact\n- Before: ~1.9 snippets/second max\n- After: ~10-15 snippets/second max\n- Enable rapid-fire use cases: chain multiple snippets quickly without delay",
+  "pub_date": "2026-04-04T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRlRrSHoyVm5aNDluODY5NEg1c0NyZWtxNkdHVUt5eFZxbTcwUTd3cXRTeEE0QXZEZWJhMjhUajNhejFIK3lYM2VOd1psak1vYlVMSGlpM2d4VXJRb0M3MnhSb1l5MlFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MjMzOTAzCWZpbGU6QmVlZlRleHQuQUlfMC41LjFfeDY0LXNldHVwLmV4ZQpHcFFaNTdNa05qazZ4ekZQcXVabjBZelc5THlxOG8rWnZOb29BN0paT0ZCbG9JUUl5LzQ5NHRFN25vTm44aW9iTy9Fa2dSUTlXMm9qL1hrRUtlWW9Bdz09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.1/BeefText.AI_0.5.1_x64-setup.exe"
+      "signature": "",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.2/BeefText.AI_0.5.2_x64-setup.exe"
     }
   }
 }
