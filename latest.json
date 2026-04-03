@@ -1,11 +1,11 @@
 {
-  "version": "0.5.0",
-  "notes": "## v0.5.0 - Native Win32 Keyboard Hooks & Fragment Rendering\n\n### Core Engine Overhaul\n- Native WH_KEYBOARD_LL hook replacing rdev for maximum compatibility\n- Fragment-based rendering pipeline (Text/KeyPress/Delay/Shortcut)\n- Native SendInput for reliable text injection across all apps\n- Dead key & accent character support\n- UTF-16 surrogate pair support for emoji\n\n### Performance\n- Removed 100ms debounce — instant trigger response\n- HashMap O(1) keyword lookups\n- Filtered DB queries for trigger-eligible snippets only\n\n### Reliability\n- Mouse click combo breaker (WH_MOUSE_LL)\n- Modifier key backup/restore during substitution\n- Configurable clipboard restore delay (500ms)\n- Excluded application support via GetForegroundWindow",
-  "pub_date": "2026-04-03T12:00:00Z",
+  "version": "0.5.1",
+  "notes": "## v0.5.1 - Background Readiness Guarantee\n\n### Reliability\n- **Power Management Guard**: Hook thread now calls `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)` to prevent Windows from sleeping/hibernating while the app is running. App stays responsive after 5+ hours idle.\n- **Thread Priority Boost**: Hook thread now runs at `THREAD_PRIORITY_ABOVE_NORMAL` so the Windows scheduler never deprioritizes it during long idle periods.\n- **Periodic Wake**: Message pump now uses `MsgWaitForMultipleObjectsEx` with 30-second timeout to keep scheduler quantum fresh.\n- **Watchdog Thread**: Background watchdog monitors hook thread liveness every 30 seconds and logs fatal errors if it dies.\n- **Main Thread Power Guard**: Tauri event loop thread also protected from power suspension.",
+  "pub_date": "2026-04-03T15:30:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3QxYllXZmEza3hhOUFoZGVEakVhVjVMN1VKcitHUUU4UGZ0RXd3bndITGxBeGQxdW5Rb3BaYnFkdENITkR5RWc3MmV2RUNFcDhWZkdIV0Zyb1VGeWcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MjE3NzI0CWZpbGU6QmVlZlRleHQuQUlfMC41LjBfeDY0LXNldHVwLmV4ZQpqQzhlb2l3cHN1bUZjZEg2dlYvZEVRTXZqRTJHSC9JV05CMzhNeUp4cjY1UEN3bHdPOWEzRUdvZ1A4ZnhXYlBNYzhzZ3hkMURtVzM3RWNpaHBNVlpDZz09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.0/BeefText.AI_0.5.0_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSRlRrSHoyVm5aNDluODY5NEg1c0NyZWtxNkdHVUt5eFZxbTcwUTd3cXRTeEE0QXZEZWJhMjhUajNhejFIK3lYM2VOd1psak1vYlVMSGlpM2d4VXJRb0M3MnhSb1l5MlFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MjMzOTAzCWZpbGU6QmVlZlRleHQuQUlfMC41LjFfeDY0LXNldHVwLmV4ZQpHcFFaNTdNa05qazZ4ekZQcXVabjBZelc5THlxOG8rWnZOb29BN0paT0ZCbG9JUUl5LzQ5NHRFN25vTm44aW9iTy9Fa2dSUTlXMm9qL1hrRUtlWW9Bdz09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.1/BeefText.AI_0.5.1_x64-setup.exe"
     }
   }
 }
