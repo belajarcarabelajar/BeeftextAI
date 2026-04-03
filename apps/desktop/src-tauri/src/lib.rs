@@ -357,17 +357,10 @@ async fn generate_cheat_sheet() -> Result<String, String> {
 
 #[tauri::command]
 async fn start_keyboard_hook() -> Result<String, String> {
-    // Ensure worker is running
-    trigger::ensure_worker_running();
-
-    let kb = Arc::clone(&KEYBOARD);
-    trigger::set_keyboard_state(Arc::clone(&KEYBOARD));
-
-    kb.start_listening(move |buffer| {
-        trigger::enqueue_trigger(buffer);
-    });
-
-    Ok("Keyboard hook started".to_string())
+    // P15: The hook is already started by run() auto-start.
+    // This command just re-enables it if it was paused.
+    KEYBOARD.set_enabled(true);
+    Ok("Keyboard hook enabled".to_string())
 }
 
 #[tauri::command]

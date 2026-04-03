@@ -1,6 +1,6 @@
 use chrono::{Local, Duration as ChronoDuration};
 use crate::ollama::OllamaClient;
-use crate::clipboard;
+
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::sync::mpsc;
@@ -24,14 +24,115 @@ static RE_SHORTCUT: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{shortcut:([^}]+)\
 static RE_DELAY: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{delay:(\d+)\}").unwrap());
 static RE_CURSOR: Lazy<Regex> = Lazy::new(|| Regex::new(r"#\{cursor\}").unwrap());
 
+/// P12: Fragment types for sequential rendering by engine.rs
+#[derive(Debug, Clone)]
+pub enum SnippetFragment {
+    /// Plain text to be pasted via clipboard
+    Text(String),
+    /// Key press to simulate (key, repeat_count)
+    KeyPress(rdev::Key, usize),
+    /// Delay in milliseconds
+    Delay(u64),
+    /// Shortcut (modifier keys + main key)
+    Shortcut(Vec<rdev::Key>, rdev::Key),
+}
+
+/// P12: Placeholder markers used during variable evaluation.
+/// These are substituted into the text and later parsed into SnippetFragment by parse_fragments().
+const FRAG_KEY_PREFIX: &str = "\x00FRAGKEY:";
+const FRAG_DELAY_PREFIX: &str = "\x00FRAGDELAY:";
+const FRAG_SHORTCUT_PREFIX: &str = "\x00FRAGSHORTCUT:";
+const FRAG_SUFFIX: &str = "\x00";
+
 /// Result of evaluating template variables
 pub struct ExpandedText {
     pub text: String,
     /// Cursor offset from end of text. Negative = move left from end, Positive = move right from end.
     /// None means no cursor marker was present.
     pub cursor_offset: Option<i32>,
-    /// Delays to execute (in milliseconds), in order they appear in the text
-    pub delays: Vec<u64>,
+}
+
+/// P12: Parse an evaluated text string containing fragment placeholders into a Vec<SnippetFragment>.
+/// Placeholders: \x00FRAGKEY:keyname:count\x00, \x00FRAGDELAY:ms\x00, \x00FRAGSHORTCUT:mod1+mod2+key\x00
+pub fn parse_fragments(text: &str) -> Vec<SnippetFragment> {
+    let mut fragments = Vec::new();
+    let mut remaining = text;
+
+    while !remaining.is_empty() {
+        // Find the next placeholder marker
+        if let Some(marker_pos) = remaining.find('\x00') {
+            // Text before the marker
+            if marker_pos > 0 {
+                fragments.push(SnippetFragment::Text(remaining[..marker_pos].to_string()));
+            }
+            remaining = &remaining[marker_pos..];
+
+            // Try to parse the marker
+            if remaining.starts_with(FRAG_KEY_PREFIX) {
+                let content_start = FRAG_KEY_PREFIX.len();
+                if let Some(end) = remaining[content_start..].find(FRAG_SUFFIX) {
+                    let payload = &remaining[content_start..content_start + end];
+                    // payload = "keyname:count"
+                    let parts: Vec<&str> = payload.splitn(2, ':').collect();
+                    let key_name = parts[0];
+                    let count: usize = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(1);
+                    if let Some(key) = key_name_to_rdev(key_name) {
+                        fragments.push(SnippetFragment::KeyPress(key, count));
+                    }
+                    remaining = &remaining[content_start + end + FRAG_SUFFIX.len()..];
+                } else {
+                    // Malformed — skip the null byte
+                    remaining = &remaining[1..];
+                }
+            } else if remaining.starts_with(FRAG_DELAY_PREFIX) {
+                let content_start = FRAG_DELAY_PREFIX.len();
+                if let Some(end) = remaining[content_start..].find(FRAG_SUFFIX) {
+                    let payload = &remaining[content_start..content_start + end];
+                    if let Ok(ms) = payload.parse::<u64>() {
+                        fragments.push(SnippetFragment::Delay(ms));
+                    }
+                    remaining = &remaining[content_start + end + FRAG_SUFFIX.len()..];
+                } else {
+                    remaining = &remaining[1..];
+                }
+            } else if remaining.starts_with(FRAG_SHORTCUT_PREFIX) {
+                let content_start = FRAG_SHORTCUT_PREFIX.len();
+                if let Some(end) = remaining[content_start..].find(FRAG_SUFFIX) {
+                    let payload = &remaining[content_start..content_start + end];
+                    if let Some((modifiers, key)) = parse_shortcut(payload) {
+                        fragments.push(SnippetFragment::Shortcut(modifiers, key));
+                    }
+                    remaining = &remaining[content_start + end + FRAG_SUFFIX.len()..];
+                } else {
+                    remaining = &remaining[1..];
+                }
+            } else {
+                // Unknown marker — skip the null byte
+                remaining = &remaining[1..];
+            }
+        } else {
+            // No more markers — rest is plain text
+            fragments.push(SnippetFragment::Text(remaining.to_string()));
+            break;
+        }
+    }
+
+    // Merge adjacent Text fragments
+    let mut merged = Vec::new();
+    for frag in fragments {
+        match frag {
+            SnippetFragment::Text(ref t) if t.is_empty() => continue,
+            SnippetFragment::Text(t) => {
+                if let Some(SnippetFragment::Text(ref mut prev)) = merged.last_mut() {
+                    prev.push_str(&t);
+                } else {
+                    merged.push(SnippetFragment::Text(t));
+                }
+            }
+            other => merged.push(other),
+        }
+    }
+    merged
 }
 
 /// Map a key name string to rdev::Key
@@ -230,7 +331,6 @@ fn evaluate_variables_inner<'a>(
 ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<ExpandedText, String>> + Send + 'a>> {
     Box::pin(async move {
     let mut result = text.to_string();
-    let mut delays = Vec::new();
 
     // #{clipboard} — current clipboard content
     if result.contains("#{clipboard}") {
@@ -419,46 +519,43 @@ fn evaluate_variables_inner<'a>(
     }
 
     // #{key:keyname} and #{key:keyname:count}
+    // P12: Emit placeholder markers instead of executing immediately.
+    // These will be parsed by parse_fragments() and executed at the right position.
     {
         let key_result = result.clone();
         for cap in RE_KEY.captures_iter(&key_result) {
             let full_match = cap[0].to_string();
             let key_name = &cap[1];
             let count: usize = cap.get(2).and_then(|m| m.as_str().parse().ok()).unwrap_or(1);
-            if let Some(key) = key_name_to_rdev(key_name) {
-                // Simulate key presses immediately during variable evaluation
-                // (These happen during expansion, keyboard hook is already disabled)
-                for _ in 0..count {
-                    clipboard::simulate_key_press(key);
-                    std::thread::sleep(std::time::Duration::from_millis(10));
-                }
-            }
-            result = result.replace(&full_match, "");
+            // P12: Replace with fragment placeholder instead of executing
+            let placeholder = format!("{}{}:{}{}", FRAG_KEY_PREFIX, key_name, count, FRAG_SUFFIX);
+            result = result.replace(&full_match, &placeholder);
         }
     }
 
     // #{shortcut:mod+key} — e.g. #{shortcut:Ctrl+Shift+J}
+    // P12: Emit placeholder markers instead of executing immediately.
     {
         let shortcut_result = result.clone();
         for cap in RE_SHORTCUT.captures_iter(&shortcut_result) {
             let full_match = cap[0].to_string();
             let shortcut_str = &cap[1];
-            if let Some((modifiers, key)) = parse_shortcut(shortcut_str) {
-                clipboard::simulate_shortcut(&modifiers, key);
-            }
-            result = result.replace(&full_match, "");
+            // P12: Replace with fragment placeholder instead of executing
+            let placeholder = format!("{}{}{}", FRAG_SHORTCUT_PREFIX, shortcut_str, FRAG_SUFFIX);
+            result = result.replace(&full_match, &placeholder);
         }
     }
 
-    // #{delay:ms} — collect delays to execute later (not evaluated here)
+    // #{delay:ms} — emit fragment placeholder for in-place execution by engine.rs
+    // P12: No longer collecting delays into a Vec; they're now fragment placeholders.
     {
         let delay_result = result.clone();
         for cap in RE_DELAY.captures_iter(&delay_result) {
             let full_match = cap[0].to_string();
             if let Ok(ms) = cap[1].parse::<u64>() {
-                delays.push(ms);
+                let placeholder = format!("{}{}{}", FRAG_DELAY_PREFIX, ms, FRAG_SUFFIX);
+                result = result.replace(&full_match, &placeholder);
             }
-            result = result.replace(&full_match, "");
         }
     }
 
@@ -481,6 +578,6 @@ fn evaluate_variables_inner<'a>(
         None
     };
 
-    Ok(ExpandedText { text: result, cursor_offset, delays })
+    Ok(ExpandedText { text: result, cursor_offset })
     }) // closes Box::pin(async move {
 }
