@@ -5,7 +5,9 @@
   "platforms": {
     "windows-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL2taeWJNdHc3bjJVNlgxTWN3QW55cmNiSjQwanRUelhLWkNlN25wb0h0SGFkZjA0OU53S2tDN3k0bytzMGJuNUJIcWlUSDhuQS8zc3dLWWx6OHdlT3djPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MzIwMjgzCWZpbGU6QmVlZlRleHQuQUlfMC41LjhfeDY0LXNldHVwLmV4ZQpkWDArdzlPeCt2d0ZWUFRXa0tzamVOcFU1MU5QZngxdWxpdWRlK0tZazBqMHg5eERoVGh0YUpkT21JWnFNS1hBdTJTd0lwaDJTT3VUTDBIOFhEOUJDQT09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.8/BeefText.AI_0.5.8_x64-setup.exe"
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.8/BeefText.AI_0.5.8_x64-setup.exe",
+      "msi": "BeefText.AI_0.5.8_x64_en-US.msi",
+      "msi_signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL21IQWU1V0RJYTVsU3dMNEZiU0JtODQ3K1VzOWhvQlVsS2g4bG1aRFUyajgrRUh2VW1hOFBCdHdGYnJTRVJjaS9QRVgvZGFqem5OWjFIVGpSbEh3K3djPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MzIwMjgzCWZpbGU6QmVlZlRleHQuQUlfMC41LjhfeDY0X2VuLVVTLm1zaQpBSkE3ZkR6S3FsS0NRNEp1djIxblRQR2NzSVpqZ3FFdDFGSThRVkF0UWd3ZEh5OEhRKyswN3NvK01MS2k5aVJaUkFNM0p4STJWUWhaRjRqbDRzNWtDdz09Cg=="
     }
   }
 }
