@@ -806,6 +806,7 @@ function ChatPage({ showToast, ollamaOnline }: { showToast: (m: string, t?: "suc
     });
     setLoading(true);
 
+    // AI memory: last 10 messages (user+assistant pairs) are kept for Ollama context
     const backendMsg = sentImagePreview 
       ? userMsg + "\n\n[SYSTEM NOTE: The user has successfully attached an image to this request. Acknowledge it, and generate the JSON snippet with content_type 'Image' or 'Both'. OMIT the 'image_data' field from the JSON. Do NOT say you cannot see the image.]"
       : userMsg;
