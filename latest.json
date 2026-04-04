@@ -1,11 +1,11 @@
 {
-  "version": "0.5.3",
-  "notes": "## v0.5.3 - Debug Logging Added\n\n### Debug Logging\n- Added debug logging to keyboard.rs: buffer updates with content\n- Added debug logging to trigger.rs: each snippet check with keyword and result\n- Added logging to engine.rs: perform_substitution START with keyword and content_type\n\n### To Enable Debug Logs\nRun in terminal before launching app:\n```powershell\n$env:RUST_LOG = \"debug\"\n```\n\nOr check app logs at: `%LOCALAPPDATA%\\BeeftextAI\\logs\\`",
-  "pub_date": "2026-04-04T00:00:00Z",
+  "version": "0.5.5",
+  "notes": "Release v0.5.5 - Bug fixes for embedding system and backup commands",
+  "pub_date": "2026-04-04T06:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSaTZIVlRGOEJEWmU5d2ZOaWhhY1FnYkYxUHBaMXRTNzBhWDJaRHdQOC9Qa0FXN1RPZDJ0NEcyekxTanp2WktaZnRJdzBoZk8xenN0SWFySFJGRHVQdnp3MCs2dHVGcWdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MjczMjQ1CWZpbGU6QmVlZlRleHQuQUlfMC41LjNfeDY0LXNldHVwLmV4ZQpKbnJPaHN2ei9WSjVtTzRFbEVJc1o4V2Y5VytGY0grc0hJZngvaFBFb2JzaWFpSmNGd3ZhZTdzeEw4M0VKMW5sZVlydW5jWlFueWk2b1c4cEQ5NUpEQT09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.3/BeefText.AI_0.5.3_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL2dsZEFzeVJzM2YwcDR3dlovOWoyRzA1TGRLcXpET0ZFeEs0eEU0K2VDbEwrZlhLVGsxdDl2YnE3YjB3d0ppaHhRVXBKRUhxd1REUFIxaTVUSEZzTHdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MjgyODMwCWZpbGU6QmVlZlRleHQuQUlfMC41LjVfeDY0LXNldHVwLmV4ZQo5MktkZW1WWERHcjc5SkphaW1yNnZkMkwxYUhreXUvd2hLdkZvNnpVMkx6RytCWkw5L2sxWitCc3JIdnp2Rm5DdUErdTJnYjFWMjVCRnVoMnhRT01DUT09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.5/BeefText.AI_0.5.5_x64-setup.exe"
     }
   }
 }

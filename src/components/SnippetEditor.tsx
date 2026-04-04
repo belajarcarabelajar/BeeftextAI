@@ -174,9 +174,9 @@ export default function SnippetEditor({ snippet, groups, onClose, onSave, showTo
               <label className="input-label">Image</label>
               <input className="input" type="file" accept="image/*" onChange={handleImageSelect} />
               {imagePreview && (
-                <div style={{ marginTop: 8, position: "relative", display: "inline-block" }}>
+                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
                   <img src={imagePreview} alt="Preview" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 6, border: "1px solid var(--border)" }} />
-                  <button className="btn btn-danger" onClick={handleRemoveImage} style={{ marginTop: 6 }}>Remove Image</button>
+                  <button className="btn btn-danger btn-sm" onClick={handleRemoveImage}>Remove Image</button>
                 </div>
               )}
             </div>
@@ -187,9 +187,9 @@ export default function SnippetEditor({ snippet, groups, onClose, onSave, showTo
               <label className="input-label">Image <span style={{ color: "var(--text-tertiary)" }}>(pasted after text, ~150ms delay)</span></label>
               <input className="input" type="file" accept="image/*" onChange={handleImageSelect} />
               {imagePreview && (
-                <div style={{ marginTop: 8, position: "relative", display: "inline-block" }}>
+                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
                   <img src={imagePreview} alt="Preview" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 6, border: "1px solid var(--border)" }} />
-                  <button className="btn btn-danger" onClick={handleRemoveImage} style={{ marginTop: 6 }}>Remove Image</button>
+                  <button className="btn btn-danger btn-sm" onClick={handleRemoveImage}>Remove Image</button>
                 </div>
               )}
             </div>

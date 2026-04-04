@@ -226,6 +226,44 @@ function SnippetsPage({ showToast, showForm, setShowForm, editingSnippet, setEdi
     } catch (e) { showToast(String(e), "error"); }
   };
 
+  const handleImportJson = async () => {
+    try {
+      const path = await openPicker({
+        filters: [{ name: "JSON", extensions: ["json"] }],
+        multiple: false,
+      });
+      if (!path) return;
+      const content = await readFile(path);
+      const decoder = new TextDecoder("utf-8");
+      const json = decoder.decode(content);
+      const result = await invoke<ImportResult>("import_json", { jsonContent: json });
+      showToast(`Imported ${result.snippets_imported} snippets, ${result.groups_imported} groups`);
+      if (result.errors.length > 0) {
+        showToast(`Errors: ${result.errors.join("; ")}`, "error");
+      }
+      load();
+    } catch (e) { showToast(String(e), "error"); }
+  };
+
+  const handleImportCsv = async () => {
+    try {
+      const path = await openPicker({
+        filters: [{ name: "CSV", extensions: ["csv"] }],
+        multiple: false,
+      });
+      if (!path) return;
+      const content = await readFile(path);
+      const decoder = new TextDecoder("utf-8");
+      const csv = decoder.decode(content);
+      const result = await invoke<ImportResult>("import_csv", { csvContent: csv });
+      showToast(`Imported ${result.snippets_imported} snippets`);
+      if (result.errors.length > 0) {
+        showToast(`Errors: ${result.errors.join("; ")}`, "error");
+      }
+      load();
+    } catch (e) { showToast(String(e), "error"); }
+  };
+
   const handleExportJson = async () => {
     try {
       const path = await save({
@@ -288,9 +326,13 @@ function SnippetsPage({ showToast, showForm, setShowForm, editingSnippet, setEdi
           </div>
           <div style={{ position: "relative" }}>
             <DropdownMenu items={[
+              { label: "📥 Import as JSON", onClick: handleImportJson },
+              { label: "📥 Import as CSV", onClick: handleImportCsv },
+              { type: "separator" },
               { label: "📥 Import from Beeftext", onClick: () => setShowImport(true) },
               { label: "📤 Export as JSON", onClick: handleExportJson },
               { label: "📤 Export as CSV", onClick: handleExportCsv },
+              { type: "separator" },
               { label: "📄 Cheat Sheet", onClick: handleCheatSheet },
               { type: "separator" },
               { label: "🗑 Delete All Snippets", onClick: handleDeleteAll },
