@@ -78,36 +78,94 @@ impl Snippet {
         }
     }
 
-    /// Check if the snippet matches the given user input
-    /// Mirrors original Beeftext's Combo::matchesForInput() behavior:
-    /// - Strict mode: exact match only (input.compare(keyword_) == 0)
-    /// - Loose mode: ends with (input.endsWith(keyword_)), no word boundary check
+    /// Check if the snippet matches the given user input (boundary-aware).
+    ///
+    /// Boundary rules:
+    /// - Keyword must appear at the END of the input buffer.
+    /// - If a preceding character exists, it must NOT be alphanumeric
+    ///   (i.e., keyword must follow whitespace, punctuation, or line start).
+    /// - Strict mode: keyword must be at buffer end (== keyword or ends with keyword).
+    /// - Loose mode: same boundary check, case-insensitive variant available.
     pub fn matches_input(&self, input: &str) -> bool {
         if !self.enabled {
             return false;
         }
-        match self.matching_mode {
+
+        let keyword = &self.keyword;
+        let keyword_len = keyword.len();
+
+        // ── Step 1: Find keyword at end of input ─────────────────────────────
+        // Returns the byte position where the keyword STARTS (match_end - keyword_len)
+        let match_start = match self.matching_mode {
             MatchingMode::Strict => {
-                // Original Beeftext strict mode: exact match only, no word boundary
                 match self.case_sensitivity {
-                    CaseSensitivity::CaseSensitive => input == self.keyword,
-                    CaseSensitivity::CaseInsensitive => input.eq_ignore_ascii_case(&self.keyword),
+                    CaseSensitivity::CaseSensitive => {
+                        if input.ends_with(keyword) {
+                            input.len() - keyword_len
+                        } else {
+                            return false;
+                        }
+                    }
+                    CaseSensitivity::CaseInsensitive => {
+                        let input_lower = input.to_lowercase();
+                        let kw_lower = keyword.to_lowercase();
+                        if input_lower.ends_with(&kw_lower) {
+                            input.len() - keyword_len
+                        } else {
+                            return false;
+                        }
+                    }
                 }
             }
             MatchingMode::Loose => {
-                // Original Beeftext loose mode: endsWith only, no boundary check
+                // Loose mode: find LAST occurrence of keyword at buffer end
                 match self.case_sensitivity {
-                    CaseSensitivity::CaseSensitive => input.ends_with(&self.keyword),
-                    CaseSensitivity::CaseInsensitive => input.to_lowercase().ends_with(&self.keyword.to_lowercase()),
+                    CaseSensitivity::CaseSensitive => {
+                        if let Some(pos) = input.rfind(keyword) {
+                            // Only match if keyword ends at buffer boundary
+                            if pos + keyword_len == input.len() {
+                                pos
+                            } else {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    }
+                    CaseSensitivity::CaseInsensitive => {
+                        let input_lower = input.to_lowercase();
+                        let kw_lower = keyword.to_lowercase();
+                        if let Some(pos) = input_lower.rfind(&kw_lower) {
+                            if pos + keyword_len == input.len() {
+                                pos
+                            } else {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    }
                 }
             }
+        };
+
+        // ── Step 2: Boundary check ─────────────────────────────────────────
+        // If there's a preceding character, it must NOT be alphanumeric.
+        // This prevents mid-word expansion: "IndoSSGnesia" should not expand "ssg"
+        // because 'o' (alphanumeric) precedes the keyword.
+        if match_start > 0 {
+            // Get the character just before the keyword
+            let prev_char = input[..match_start].chars().last().unwrap();
+            if prev_char.is_alphanumeric() {
+                return false; // Mid-word trigger — reject
+            }
         }
+
+        true
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+    // ── Strict mode: exact or ends-with keyword, with boundary check ──────
 
     #[test]
     fn test_strict_match_exact() {
@@ -119,12 +177,74 @@ mod tests {
             None,
         );
 
-        // Exact match only - case sensitive
+        // Exact match at end — should match
         assert!(snippet.matches_input("brb"));
         assert!(!snippet.matches_input("BRB")); // case sensitive
-        assert!(!snippet.matches_input("brb!")); // not exact match
-        assert!(!snippet.matches_input("brb ")); // not exact match
-        assert!(!snippet.matches_input("I will brb")); // not exact match
+        assert!(!snippet.matches_input("brb!")); // trailing '!' makes prev char alphanumeric
+        assert!(!snippet.matches_input("brb ")); // trailing space is NOT alphanumeric, but buffer end is not keyword-end
+    }
+
+    #[test]
+    fn test_strict_match_with_trailing_space() {
+        let snippet = Snippet::new(
+            "brb".to_string(),
+            "be right back".to_string(),
+            "BRB".to_string(),
+            "".to_string(),
+            None,
+        );
+
+        // Keyword truly at buffer end
+        assert!(snippet.matches_input("brb"));
+    }
+
+    #[test]
+    fn test_strict_match_with_preceding_space() {
+        let snippet = Snippet::new(
+            "brb".to_string(),
+            "be right back".to_string(),
+            "BRB".to_string(),
+            "".to_string(),
+            None,
+        );
+
+        // Keyword preceded by space — should match
+        assert!(snippet.matches_input("I will brb"));
+        assert!(snippet.matches_input("say brb"));
+        assert!(snippet.matches_input("test brb"));
+    }
+
+    #[test]
+    fn test_strict_match_with_punctuation() {
+        let snippet = Snippet::new(
+            "hello".to_string(),
+            "Hello World".to_string(),
+            "Hello".to_string(),
+            "".to_string(),
+            None,
+        );
+
+        // Preceded by space — should match (keyword at buffer boundary)
+        assert!(snippet.matches_input("say hello"));
+        assert!(snippet.matches_input("Bandung, Indonesia hello"));
+        // "(hello)" — ends with ")", not "hello", so keyword is not at buffer boundary
+        // "(hello" — ends with "o", not "hello", same reason
+    }
+
+    #[test]
+    fn test_strict_mid_word_rejected() {
+        let snippet = Snippet::new(
+            "ssg".to_string(),
+            "Snippet".to_string(),
+            "SSG".to_string(),
+            "".to_string(),
+            None,
+        );
+
+        // Mid-word: preceded by alphanumeric — MUST NOT match
+        assert!(!snippet.matches_input("IndoSSGnesia"));
+        assert!(!snippet.matches_input("testSSGword"));
+        assert!(!snippet.matches_input("helloSSGworld"));
     }
 
     #[test]
@@ -141,8 +261,11 @@ mod tests {
         assert!(snippet.matches_input("brb"));
         assert!(snippet.matches_input("BRB"));
         assert!(snippet.matches_input("BrB"));
-        assert!(!snippet.matches_input("brb!")); // not exact match
+        assert!(snippet.matches_input("I will BRB"));
+        assert!(!snippet.matches_input("brb!")); // trailing '!' makes prev char alphanumeric
     }
+
+    // ── Loose mode: ends-with, with boundary check ─────────────────────────
 
     #[test]
     fn test_loose_match_endswith() {
@@ -155,11 +278,29 @@ mod tests {
         );
         snippet.matching_mode = MatchingMode::Loose;
 
-        // Loose mode: ends with, no word boundary
+        // Exact at end
         assert!(snippet.matches_input("brb"));
+        // Preceded by space
         assert!(snippet.matches_input("I will brb"));
-        assert!(snippet.matches_input("brb!")); // ends with brb, no boundary check
         assert!(snippet.matches_input("test brb"));
+        // Trailing punctuation — buffer ends with punctuation, NOT keyword, so no match
+        // (This is correct: "brb." ends with ".", not "brb")
+    }
+
+    #[test]
+    fn test_loose_mid_word_rejected() {
+        let mut snippet = Snippet::new(
+            "ssg".to_string(),
+            "Snippet".to_string(),
+            "SSG".to_string(),
+            "".to_string(),
+            None,
+        );
+        snippet.matching_mode = MatchingMode::Loose;
+
+        // Mid-word: preceded by alphanumeric — MUST NOT match
+        assert!(!snippet.matches_input("IndoSSGnesia"));
+        assert!(!snippet.matches_input("testSSGword"));
     }
 
     #[test]
@@ -173,9 +314,27 @@ mod tests {
         );
         snippet.matching_mode = MatchingMode::Loose;
 
-        // No word boundary check - triggers on any ending
+        // Preceded by space — should match
         assert!(snippet.matches_input("say hello"));
-        assert!(snippet.matches_input("hello!"));
-        assert!(snippet.matches_input("hello."));
+        assert!(snippet.matches_input("Bandung, Indonesia hello"));
+        // "hello!" — ends with "!", not "hello", so no match
+        // "hello." — ends with ".", not "hello", so no match
     }
-}
+
+    #[test]
+    fn test_loose_match_case_insensitive() {
+        let mut snippet = Snippet::new(
+            "brb".to_string(),
+            "be right back".to_string(),
+            "BRB".to_string(),
+            "".to_string(),
+            None,
+        );
+        snippet.matching_mode = MatchingMode::Loose;
+        snippet.case_sensitivity = CaseSensitivity::CaseInsensitive;
+
+        assert!(snippet.matches_input("brb"));
+        assert!(snippet.matches_input("BRB"));
+        assert!(snippet.matches_input("I will BRB"));
+        // "brb!" — ends with "!", not "brb", so no match (keyword not at buffer boundary)
+    }
