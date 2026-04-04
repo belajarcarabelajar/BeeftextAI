@@ -1,8 +1,9 @@
 [package]
 name = "beeftextai"
-version = "0.5.5"
-description = "BeefText AI — Modern Text Expander Powered by Ollama"
+version = "0.5.7"
+description = "A powerful AI-assisted text expander"
 authors = ["Tedi Rahmat"]
+license = "MIT"
 edition = "2021"
 
 [lib]
