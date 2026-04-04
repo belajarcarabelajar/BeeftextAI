@@ -48,7 +48,7 @@ apps/desktop/src-tauri/main.key
 apps/desktop/src-tauri/main.key.pub
 apps/desktop/src-tauri/main.key.raw
 ```
-These files contain the Tauri NSIS auto-updater signing private key (password `790602`, documented in `CLAUDE.md:68`). Additionally, `CLAUDE.md:21` contains the entire base64-encoded private key inline as a copy-paste snippet.
+These files contain the Tauri NSIS auto-updater signing private key (password `YOUR_PASSWORD`, documented in `CLAUDE.md:68`). Additionally, `CLAUDE.md:21` contains the entire base64-encoded private key inline as a copy-paste snippet.
 
 **Impact:** Any person with read access to this repository can extract the private key and sign a malicious binary that the auto-updater will accept as legitimate. This is a complete compromise of the update integrity guarantee.
 

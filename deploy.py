@@ -28,7 +28,7 @@ def main():
     PRIVATE_KEY_PATH = os.path.join(TAURI_DIR, "main_new.key")
     with open(PRIVATE_KEY_PATH, "r", encoding="utf-8") as f:
         PRIVATE_KEY = f.read().strip()
-    PRIVATE_KEY_PASSWORD = "790602"
+    PRIVATE_KEY_PASSWORD = os.environ.get("TAURI_SIGNING_PRIVATE_KEY_PASSWORD", "")
 
     if not PRIVATE_KEY:
         print("\u274c Failed to read TAURI_SIGNING_PRIVATE_KEY from " + PRIVATE_KEY_PATH)
