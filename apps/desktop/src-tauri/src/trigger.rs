@@ -219,6 +219,7 @@ pub fn invalidate_cache() {
 
 /// P11: Internal check_and_substitute that uses HashMap index for O(1) lookups.
 /// Falls back to linear scan for loose-mode snippets.
+/// Note: Strict mode uses exact match (input == keyword), Loose mode uses ends_with.
 async fn check_and_substitute_internal(
     typed_buffer: &str,
     ollama: &OllamaClient,

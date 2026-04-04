@@ -1,10 +1,10 @@
 {
   "version": "0.5.3",
-  "notes": "## v0.5.3 - Exact Match Fix & Image Snippet Support\n\n### Bug Fixes\n- **Exact Match Only**: Strict mode now uses `input == keyword` (no word boundary). Loose mode uses `ends_with` only (no word boundary check). Mirrors original Beeftext behavior.\n- **Image Snippets Now Supported**: Image-only snippets can be triggered. Previously filtered out from trigger cache.\n\n### Files Changed\n- `snippet.rs`: matches_input() simplified to original Beeftext logic\n- `store.rs`: get_trigger_snippets() no longer excludes Image content_type",
+  "notes": "## v0.5.3 - Exact Match Fix & Image Snippet Support\n\n### Bug Fixes\n- **Exact Match Only**: Strict mode now uses `input == keyword` (no word boundary). Loose mode uses `ends_with` only (no word boundary check). Mirrors original Beeftext behavior.\n- **Image Snippets Now Supported**: Image-only snippets can be triggered. Previously filtered out from trigger cache.\n- **Cache Bug Investigation**: Reviewed trigger caching system — invalidate_cache() is called on all snippet CRUD operations. No obvious stale cache issues found.",
   "pub_date": "2026-04-04T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSaTZIVlRGOEJEWlRQZFdOVnVHT2RYd3NFV2QwYzlkMmtVblNMV3dQazQzRXRybWUvbXdwUlhSK2FFN3lBOWVudS9Ic3ZVM2xPelZaSHZycmloblNxL1RRdFJyaVlaTHdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MjcxNTQ2CWZpbGU6QmVlZlRleHQuQUlfMC41LjNfeDY0LXNldHVwLmV4ZQplZVZSQmptMWs4aDN1QmpqZlJuN21HSHJSOTZFTVpKNjdCR2F2eTRIaHBxVDhyQkU1TUV4eVE1NG5XUGtCTTA0SGJpVFNiamFFa0t5bTkvejZtKzhDdz09Cg==",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSaTZIVlRGOEJEWld4VitIV0JCbC9mOEYzMlNRNlNOemovZXZTMFA1TTBvY0RDK1hsS1NycTkxREQ4RWQ5cjJZUU1yT0oxT3ZBdVVTUjcwS2syZ1UvZ1V2dXl2Tll6L3cwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MjcyNjIyCWZpbGU6QmVlZlRleHQuQUlfMC41LjNfeDY0LXNldHVwLmV4ZQpVSlVUa3E2MUlqaTVscWk3RU1HLzhqdXR3b2hzZWFLTFhrTzVmaElzNmw3anRncE9SMWlqa1NXVkFBek5takNtS2FUWm15T0Vpb1FLeGx3Yy9Ga0lCdz09Cg==",
       "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.3/BeefText.AI_0.5.3_x64-setup.exe"
     }
   }
