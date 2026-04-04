@@ -79,65 +79,26 @@ impl Snippet {
     }
 
     /// Check if the snippet matches the given user input
+    /// Mirrors original Beeftext's Combo::matchesForInput() behavior:
+    /// - Strict mode: exact match only (input.compare(keyword_) == 0)
+    /// - Loose mode: ends with (input.endsWith(keyword_)), no word boundary check
     pub fn matches_input(&self, input: &str) -> bool {
         if !self.enabled {
             return false;
         }
         match self.matching_mode {
             MatchingMode::Strict => {
-                let matches = match self.case_sensitivity {
-                    CaseSensitivity::CaseSensitive => input.ends_with(&self.keyword),
-                    CaseSensitivity::CaseInsensitive => input.to_lowercase().ends_with(&self.keyword.to_lowercase()),
-                };
-
-                // Word boundary check:
-                // Trigger only if keyword is at the start of input or preceded by a non-alphanumeric character.
-                if matches && input.len() > self.keyword.len() {
-                    let input_chars: Vec<char> = input.chars().collect();
-                    let kw_char_count = self.keyword.chars().count();
-                    if input_chars.len() >= kw_char_count + 1 {
-                        let prev_char_idx = input_chars.len() - kw_char_count - 1;
-                        if let Some(&prev_char) = input_chars.get(prev_char_idx) {
-                            if prev_char.is_alphanumeric() {
-                                return false; // In the middle of a word
-                            }
-                        }
-                    }
+                // Original Beeftext strict mode: exact match only, no word boundary
+                match self.case_sensitivity {
+                    CaseSensitivity::CaseSensitive => input == self.keyword,
+                    CaseSensitivity::CaseInsensitive => input.eq_ignore_ascii_case(&self.keyword),
                 }
-                matches
             }
             MatchingMode::Loose => {
-                // M4 fix: Require the keyword to be surrounded by word boundaries
-                // to prevent mid-word triggers (e.g. "there" triggering keyword "the").
-                let kw = match self.case_sensitivity {
-                    CaseSensitivity::CaseSensitive => self.keyword.clone(),
-                    CaseSensitivity::CaseInsensitive => self.keyword.to_lowercase(),
-                };
-                let haystack = match self.case_sensitivity {
-                    CaseSensitivity::CaseSensitive => input.to_string(),
-                    CaseSensitivity::CaseInsensitive => input.to_lowercase(),
-                };
-                // Find last occurrence in the buffer
-                if let Some(byte_pos) = haystack.rfind(&kw as &str) {
-                    let kw_char_count = kw.chars().count();
-                    let before: Vec<char> = haystack[..byte_pos].chars().collect();
-                    let after: Vec<char> = haystack[byte_pos + kw.len()..].chars().collect();
-                    // Word boundary before
-                    if let Some(&prev_char) = before.last() {
-                        if prev_char.is_alphanumeric() {
-                            return false;
-                        }
-                    }
-                    // Word boundary after
-                    if let Some(&next_char) = after.first() {
-                        if next_char.is_alphanumeric() {
-                            return false;
-                        }
-                    }
-                    let _ = kw_char_count;
-                    true
-                } else {
-                    false
+                // Original Beeftext loose mode: endsWith only, no boundary check
+                match self.case_sensitivity {
+                    CaseSensitivity::CaseSensitive => input.ends_with(&self.keyword),
+                    CaseSensitivity::CaseInsensitive => input.to_lowercase().ends_with(&self.keyword.to_lowercase()),
                 }
             }
         }
@@ -149,7 +110,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_strict_match() {
+    fn test_strict_match_exact() {
         let snippet = Snippet::new(
             "brb".to_string(),
             "be right back".to_string(),
@@ -157,17 +118,34 @@ mod tests {
             "".to_string(),
             None,
         );
-        
+
+        // Exact match only - case sensitive
         assert!(snippet.matches_input("brb"));
-        assert!(snippet.matches_input("I will brb"));
-        // Case sensitive by default, so uppercase won't match
-        assert!(!snippet.matches_input("BRB"));
-        // Fails word boundary
-        assert!(!snippet.matches_input("brba"));
+        assert!(!snippet.matches_input("BRB")); // case sensitive
+        assert!(!snippet.matches_input("brb!")); // not exact match
+        assert!(!snippet.matches_input("brb ")); // not exact match
+        assert!(!snippet.matches_input("I will brb")); // not exact match
     }
 
     #[test]
-    fn test_loose_match() {
+    fn test_strict_match_case_insensitive() {
+        let mut snippet = Snippet::new(
+            "brb".to_string(),
+            "be right back".to_string(),
+            "BRB".to_string(),
+            "".to_string(),
+            None,
+        );
+        snippet.case_sensitivity = CaseSensitivity::CaseInsensitive;
+
+        assert!(snippet.matches_input("brb"));
+        assert!(snippet.matches_input("BRB"));
+        assert!(snippet.matches_input("BrB"));
+        assert!(!snippet.matches_input("brb!")); // not exact match
+    }
+
+    #[test]
+    fn test_loose_match_endswith() {
         let mut snippet = Snippet::new(
             "brb".to_string(),
             "be right back".to_string(),
@@ -176,11 +154,28 @@ mod tests {
             None,
         );
         snippet.matching_mode = MatchingMode::Loose;
-        
-        assert!(snippet.matches_input("I will brb shortly"));
-        // M4 fix: mid-word should NOT match anymore
-        assert!(!snippet.matches_input("wordbrbword"));
-        // Word boundary with punctuation is OK
-        assert!(snippet.matches_input("I'll brb, ok?"));
+
+        // Loose mode: ends with, no word boundary
+        assert!(snippet.matches_input("brb"));
+        assert!(snippet.matches_input("I will brb"));
+        assert!(snippet.matches_input("brb!")); // ends with brb, no boundary check
+        assert!(snippet.matches_input("test brb"));
+    }
+
+    #[test]
+    fn test_loose_match_with_punctuation() {
+        let mut snippet = Snippet::new(
+            "hello".to_string(),
+            "Hello World".to_string(),
+            "Hello".to_string(),
+            "".to_string(),
+            None,
+        );
+        snippet.matching_mode = MatchingMode::Loose;
+
+        // No word boundary check - triggers on any ending
+        assert!(snippet.matches_input("say hello"));
+        assert!(snippet.matches_input("hello!"));
+        assert!(snippet.matches_input("hello."));
     }
 }
