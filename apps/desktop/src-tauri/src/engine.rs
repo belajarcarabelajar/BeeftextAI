@@ -106,6 +106,8 @@ pub async fn perform_substitution(snippet: &Snippet, ollama: &OllamaClient) {
     // L2: Track substitution timing for performance metrics
     let start = Instant::now();
 
+    log::info!("[ENGINE] perform_substitution START: keyword='{}' content_type={:?}", snippet.keyword, snippet.content_type);
+
     // P12: Evaluate variables and get fragments instead of flat text
     let (expanded_text, fragments, cursor_offset) = if !snippet.snippet.is_empty() {
         match variable::evaluate_variables(&snippet.snippet, ollama).await {
