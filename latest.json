@@ -1,11 +1,11 @@
 {
-  "version": "0.5.7",
-  "notes": "Release v0.5.7 - Fix misleading auto-updater error handling",
-  "pub_date": "2026-04-04T16:03:00Z",
+  "version": "0.5.8",
+  "notes": "Release v0.5.8 - Fix raw JSON code fence leak in AI Chat",
+  "pub_date": "2026-04-04T16:32:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3RHMy9Ody9MaFZub3ovOG1Mb0ZocSs2U1pmWFlTaEhNQXcrR01kblJiWW5EUldXcHVOR3FiMjZac1R2dVZ6aFd4c0tNNEdhS3Mxa1BpM0ovV2YxUVE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MzE4NTYyCWZpbGU6QmVlZlRleHQuQUlfMC41LjdfeDY0LXNldHVwLmV4ZQo2TVlYeXMrbjliS25MVWlWL0Urek5qelE0cjYvQmVCNHVmVkowc05ONGRLQVpBekI0U1NTZlpGcEZmVnFOckZLZUZnWVUvWU5qQmJFMFhHS1ZzdDRCZz09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.7/BeefText.AI_0.5.7_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL2taeWJNdHc3bjJVNlgxTWN3QW55cmNiSjQwanRUelhLWkNlN25wb0h0SGFkZjA0OU53S2tDN3k0bytzMGJuNUJIcWlUSDhuQS8zc3dLWWx6OHdlT3djPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MzIwMjgzCWZpbGU6QmVlZlRleHQuQUlfMC41LjhfeDY0LXNldHVwLmV4ZQpkWDArdzlPeCt2d0ZWUFRXa0tzamVOcFU1MU5QZngxdWxpdWRlK0tZazBqMHg5eERoVGh0YUpkT21JWnFNS1hBdTJTd0lwaDJTT3VUTDBIOFhEOUJDQT09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.8/BeefText.AI_0.5.8_x64-setup.exe"
     }
   }
 }

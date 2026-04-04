@@ -1045,8 +1045,13 @@ function MessageContent({ content, showToast, imagePreview }: { content: string;
   if (extracted) {
     const { json: snippetJson, jsonStart, jsonEnd } = extracted;
     // Precise extraction using actual JSON boundaries — no indexOf/lastIndexOf on raw content
-    const textBefore = content.substring(0, jsonStart).trim();
-    const textAfter = content.substring(jsonEnd).trim();
+    // Strip orphaned markdown code fences that wrapped the JSON (e.g. ```json ... ```)
+    let textBefore = content.substring(0, jsonStart).trim();
+    let textAfter = content.substring(jsonEnd).trim();
+    // Remove trailing fence opener from textBefore (e.g. "```json" or "```")
+    textBefore = textBefore.replace(/```\w*\s*$/, "").trim();
+    // Remove leading fence closer from textAfter (e.g. "```")
+    textAfter = textAfter.replace(/^```/, "").trim();
     const handleSave = async () => {
       try {
         const generatedKeyword = snippetJson.keyword || "//new";

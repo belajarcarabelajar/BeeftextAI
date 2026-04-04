@@ -1,6 +1,6 @@
 [package]
 name = "beeftextai"
-version = "0.5.7"
+version = "0.5.8"
 description = "A powerful AI-assisted text expander"
 authors = ["Tedi Rahmat"]
 license = "MIT"
