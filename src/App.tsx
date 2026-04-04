@@ -982,6 +982,23 @@ function renderMarkdown(text: string): React.ReactNode[] {
         continue;
       }
 
+      // Table row detection: starts/ends with | and is not a separator line (|---|)
+      if (line.startsWith("|") && line.endsWith("|") && !/^\|[\s\-:]*\|$/.test(line)) {
+        const tableRows: string[][] = [];
+        while (i < lines.length && lines[i].startsWith("|") && lines[i].endsWith("|")) {
+          const row = lines[i];
+          if (!/^\|[\s\-:]*\|$/.test(row)) { // skip separator row
+            const cells = row.split("|").slice(1, -1).map(cell => cell.trim());
+            tableRows.push(cells);
+          }
+          i++;
+        }
+        if (tableRows.length >= 1) {
+          nodes.push(renderTable(tableRows, key++));
+        }
+        continue;
+      }
+
       // Empty line → spacer
       if (line.trim() === "") {
         nodes.push(<br key={key++} />);
@@ -1036,6 +1053,26 @@ function renderInline(text: string, baseKey: number): React.ReactNode[] {
   }
 
   return nodes;
+}
+
+/** Render a markdown table from parsed rows (header + body) */
+function renderTable(rows: string[][], tableKey: number): React.ReactNode {
+  if (rows.length === 0) return null;
+  const [headerRow, ...bodyRows] = rows;
+  return (
+    <table key={tableKey} className="chat-md-table">
+      <thead>
+        <tr>{headerRow.map((cell, i) => <th key={i}>{renderInline(cell, tableKey * 100 + i)}</th>)}</tr>
+      </thead>
+      <tbody>
+        {bodyRows.map((row, ri) => (
+          <tr key={ri}>
+            {row.map((cell, ci) => <td key={ci}>{renderInline(cell, tableKey * 1000 + ri * 100 + ci)}</td>)}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 // ─── Message Content ──────────────────────────────────────────────────────────

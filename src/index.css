@@ -683,6 +683,29 @@ body {
   line-height: 1.6;
 }
 
+.chat-md-table {
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 13px;
+  width: auto;
+}
+
+.chat-md-table th,
+.chat-md-table td {
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  text-align: left;
+}
+
+.chat-md-table th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+}
+
+.chat-md-table tr:nth-child(even) td {
+  background: var(--bg-primary);
+}
+
 /* ══════════════════════════════════════════════════════════════════════════════
    Modal / Dialog
    ══════════════════════════════════════════════════════════════════════════════ */
