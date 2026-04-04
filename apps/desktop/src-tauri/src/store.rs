@@ -178,7 +178,7 @@ pub fn get_trigger_snippets() -> Result<Vec<Snippet>, String> {
                 group_id, enabled, created_at, modified_at, last_used_at, ai_generated,
                 image_data, content_type
          FROM snippets
-         WHERE enabled = 1 AND keyword != '' AND content_type != 'Image'
+         WHERE enabled = 1 AND keyword != ''
          ORDER BY modified_at DESC"
     ).map_err(|e| e.to_string())?;
 

@@ -1,11 +1,11 @@
 {
-  "version": "0.5.2",
-  "notes": "## v0.5.2 - Rapid-Fire Snippet Trigger Optimization\n\n### Performance\n- **10x Faster Clipboard Restore**: Reduced from 500ms to 50ms for AK-47 style rapid-fire snippet chaining\n- **Faster Fragment Flush**: Reduced from 30ms to 10ms between text fragments\n- **SendInput Optimization**: Reduced per-character delay for faster text injection\n\n### Impact\n- Before: ~1.9 snippets/second max\n- After: ~10-15 snippets/second max\n- Enable rapid-fire use cases: chain multiple snippets quickly without delay",
+  "version": "0.5.3",
+  "notes": "## v0.5.3 - Exact Match Fix & Image Snippet Support\n\n### Bug Fixes\n- **Exact Match Only**: Strict mode now uses `input == keyword` (no word boundary). Loose mode uses `ends_with` only (no word boundary check). Mirrors original Beeftext behavior.\n- **Image Snippets Now Supported**: Image-only snippets can be triggered. Previously filtered out from trigger cache.\n\n### Files Changed\n- `snippet.rs`: matches_input() simplified to original Beeftext logic\n- `store.rs`: get_trigger_snippets() no longer excludes Image content_type",
   "pub_date": "2026-04-04T00:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSaTZIVlRGOEJEWmNVNzhoNFMwUEFSaGV5d1hMemZPMm1Pa3N6cGtIK1Z2c3lrS0o5eFY1ZW16TlJGU2hZUVZNN3RDRUJuTzQzR1pDZ3RqZTF3MjN1T3V4akdEbkh5UEFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MjcwMzI2CWZpbGU6QmVlZlRleHQuQUlfMC41LjJfeDY0LXNldHVwLmV4ZQpHdGRqWWxFMVBPbG5YK2NLODloK2FvbDRmVHZMNjQ1Z1dZMGpkczlMUUxXVldTSUZvTmRlSEd0NzNHMHc2ck45UDJJSmtFSVhUc2VQbFNtb1VHYWdBZz09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.2/BeefText.AI_0.5.2_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSaTZIVlRGOEJEWlRQZFdOVnVHT2RYd3NFV2QwYzlkMmtVblNMV3dQazQzRXRybWUvbXdwUlhSK2FFN3lBOWVudS9Ic3ZVM2xPelZaSHZycmloblNxL1RRdFJyaVlaTHdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MjcxNTQ2CWZpbGU6QmVlZlRleHQuQUlfMC41LjNfeDY0LXNldHVwLmV4ZQplZVZSQmptMWs4aDN1QmpqZlJuN21HSHJSOTZFTVpKNjdCR2F2eTRIaHBxVDhyQkU1TUV4eVE1NG5XUGtCTTA0SGJpVFNiamFFa0t5bTkvejZtKzhDdz09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.3/BeefText.AI_0.5.3_x64-setup.exe"
     }
   }
 }
