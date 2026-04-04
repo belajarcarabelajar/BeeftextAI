@@ -227,12 +227,14 @@ async fn check_and_substitute_internal(
 ) -> bool {
     let (snippets, _strict_index, _strict_index_lower) = WORKER_STATE.get_cached();
 
+    log::debug!("[TRIGGER] Buffer: '{}', Snippet count: {}", typed_buffer, snippets.len());
+
     // P11: Try all snippets (matches_input handles both strict and loose mode)
-    // The HashMap could be used for pure strict-match, but since our strict mode
-    // uses ends_with + word boundary (not exact match), linear scan is still needed.
-    // The HashMap is available for future optimization if we add ExactMatch mode.
-    for snippet in &snippets {
-        if snippet.matches_input(typed_buffer) {
+    for (idx, snippet) in snippets.iter().enumerate() {
+        let matches = snippet.matches_input(typed_buffer);
+        log::debug!("[TRIGGER] Check #{}: keyword='{}' matching_mode={:?} -> {}", idx, snippet.keyword, snippet.matching_mode, matches);
+        if matches {
+            log::info!("[TRIGGER] MATCHED! keyword='{}' uuid='{}' snippet_preview='{}'", snippet.keyword, snippet.uuid, snippet.snippet.chars().take(30).collect::<String>());
             kb.clear_buffer();
 
             // H1 fix: atomic fetch_add + rollback — prevents race condition between threads

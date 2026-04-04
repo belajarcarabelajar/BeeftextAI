@@ -391,9 +391,11 @@ impl KeyboardState {
                     buf.drain(..excess);
                 }
                 let current = buf.clone();
+                let buf_len = current.len();
                 drop(buf);
                 drop(guard);
 
+                log::debug!("[KEYBOARD] Buffer updated: len={}, content='{}'", buf_len, current);
                 // Fire the trigger callback
                 let cb = GLOBAL_CALLBACK.lock();
                 if let Some(ref callback) = *cb {
