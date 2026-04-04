@@ -1041,11 +1041,12 @@ function renderInline(text: string, baseKey: number): React.ReactNode[] {
 // ─── Message Content ──────────────────────────────────────────────────────────
 
 function MessageContent({ content, showToast, imagePreview }: { content: string; showToast: (m: string, t?: "success" | "error") => void; imagePreview?: string }) {
-  const snippetJson = extractSnippetJson(content);
-  if (snippetJson) {
-    // Strip markdown code fences (```json, ```) that wrap the JSON
-    const textBefore = content.substring(0, content.indexOf("{")).replace(/```\w*\s*$/s, "").trim();
-    const textAfter = content.substring(content.lastIndexOf("}") + 1).replace(/^\s*```/, "").trim();
+  const extracted = extractSnippetJson(content);
+  if (extracted) {
+    const { json: snippetJson, jsonStart, jsonEnd } = extracted;
+    // Precise extraction using actual JSON boundaries — no indexOf/lastIndexOf on raw content
+    const textBefore = content.substring(0, jsonStart).trim();
+    const textAfter = content.substring(jsonEnd).trim();
     const handleSave = async () => {
       try {
         const generatedKeyword = snippetJson.keyword || "//new";
@@ -1078,7 +1079,7 @@ function MessageContent({ content, showToast, imagePreview }: { content: string;
     const img = snippetJson.image_data || imagePreview;
     return (
       <div>
-        {textBefore && <p style={{ marginBottom: 10 }}>{textBefore}</p>}
+        {textBefore && <div className="chat-md" style={{ marginBottom: 10 }}>{renderMarkdown(textBefore)}</div>}
         <div className="snippet-card-chat">
           <div className="snippet-card-chat-header">📋 Generated Snippet</div>
           {snippetJson.keyword && <div className="snippet-card-chat-field"><span className="snippet-card-chat-label">Keyword:</span><span className="keyword-badge">{snippetJson.keyword}</span></div>}
@@ -1094,17 +1095,44 @@ function MessageContent({ content, showToast, imagePreview }: { content: string;
           )}
           <div className="snippet-card-chat-actions"><button className="btn btn-primary btn-sm" onClick={handleSave}>✅ Save Snippet</button></div>
         </div>
-        {textAfter && <p style={{ marginTop: 10 }}>{textAfter}</p>}
+        {textAfter && <div className="chat-md" style={{ marginTop: 10 }}>{renderMarkdown(textAfter)}</div>}
       </div>
     );
   }
   return <div className="chat-md">{renderMarkdown(content)}</div>;
 }
 
-function extractSnippetJson(text: string): any {
+function extractSnippetJson(text: string): { json: any; jsonStart: number; jsonEnd: number } | null {
   try {
-    const match = text.match(/\{[^{}]*"keyword"[^{}]*\}/s) || text.match(/\{[^{}]*"snippet"[^{}]*\}/s);
-    if (match) return JSON.parse(match[0]);
+    const keywordIdx = text.indexOf('"keyword"');
+    const snippetIdx = text.indexOf('"snippet"');
+    const startSearchIdx = keywordIdx >= 0 && snippetIdx >= 0
+      ? Math.min(keywordIdx, snippetIdx)
+      : (keywordIdx >= 0 ? keywordIdx : snippetIdx);
+    if (startSearchIdx < 0) return null;
+
+    // Walk backward to the opening '{'
+    let jsonStart = startSearchIdx;
+    while (jsonStart >= 0 && text[jsonStart] !== '{') jsonStart--;
+    if (jsonStart < 0 || text[jsonStart] !== '{') return null;
+
+    // Scan forward with bracket counting to find the matching '}'
+    let depth = 0;
+    let i = jsonStart;
+    while (i < text.length) {
+      const ch = text[i];
+      if (ch === '{') depth++;
+      else if (ch === '}') { depth--; if (depth === 0) break; }
+      i++;
+    }
+    if (depth !== 0) return null;
+
+    const jsonEnd = i + 1;
+    const candidate = text.substring(jsonStart, jsonEnd);
+    const json = JSON.parse(candidate);
+    if (json.keyword !== undefined || json.snippet !== undefined) {
+      return { json, jsonStart, jsonEnd };
+    }
   } catch {}
   return null;
 }
