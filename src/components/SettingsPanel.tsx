@@ -29,7 +29,41 @@ export default function SettingsPanel({ showToast, ollamaOnline, onLanguageChang
   const [backingUp, setBackingUp] = useState(false);
   const [rebedding, setRebedding] = useState(false);
   const [embedProgress, setEmbedProgress] = useState<{ current: number; total: number; percentage: number } | null>(null);
+  const [embedState, setEmbedState] = useState<'idle' | 'running' | 'paused'>('idle');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  // Model auto-detection: categorize as embedding or text generation
+  const isEmbeddingModel = (name: string): boolean => {
+    const embedPatterns = ['embed', 'nomic', 'qn3', 'e5', 'bge', 'gte', 'cohere', 'jina', 'mxbai', 'sentence'];
+    const lower = name.toLowerCase();
+    return embedPatterns.some(p => lower.includes(p));
+  };
+  const embeddingModels = models.filter(m => isEmbeddingModel(m.name));
+  const textModels = models.filter(m => !isEmbeddingModel(m.name));
+
+  const handlePauseEmbed = async () => {
+    try {
+      await invoke("pause_embedding");
+      setEmbedState('paused');
+      showToast("Embedding paused");
+    } catch (e) { showToast(String(e), "error"); }
+  };
+
+  const handleResumeEmbed = async () => {
+    try {
+      await invoke("resume_embedding");
+      setEmbedState('running');
+      showToast("Embedding resumed");
+    } catch (e) { showToast(String(e), "error"); }
+  };
+
+  const handleStopEmbed = async () => {
+    try {
+      await invoke("stop_embedding");
+      setEmbedState('idle');
+      showToast("Embedding stopped");
+    } catch (e) { showToast(String(e), "error"); }
+  };
 
   const loadData = useCallback(async () => {
     invoke<string | null>("get_preference", { key: "ollama_url" }).then(v => v && setOllamaUrl(v));
@@ -91,6 +125,7 @@ export default function SettingsPanel({ showToast, ollamaOnline, onLanguageChang
 
   const handleReEmbed = async (resume: boolean = false) => {
     setRebedding(true);
+    setEmbedState('running');
     setEmbedProgress(null);
     showToast(resume ? "Resuming embedding process..." : "Starting fresh embedding process...");
     try {
@@ -102,7 +137,7 @@ export default function SettingsPanel({ showToast, ollamaOnline, onLanguageChang
       }
       loadData();
     } catch (e) { showToast(String(e), "error"); }
-    finally { setRebedding(false); }
+    finally { setRebedding(false); setEmbedState('idle'); }
   };
 
   const handleRestoreBackup = async (filename: string) => {
@@ -173,8 +208,24 @@ export default function SettingsPanel({ showToast, ollamaOnline, onLanguageChang
           <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 12 }}>
             <label>Semantic Search Sync</label>
             <div style={{ display: "flex", gap: 10, width: "100%" }}>
-              <button className="btn btn-secondary" onClick={() => handleReEmbed(true)} disabled={rebedding || !ollamaOnline} style={{ flex: 1 }}>{rebedding ? <span className="spinner" /> : "⏯ Resume Embedding"}</button>
-              <button className="btn btn-danger btn-outline" onClick={() => { if(confirm("This will clear existing embeddings and start from scratch. Proceed?")) handleReEmbed(false) }} disabled={rebedding || !ollamaOnline} style={{ flex: 1 }}>{rebedding ? <span className="spinner" /> : "🔄 Force All"}</button>
+              {embedState === 'idle' && (
+                <>
+                  <button className="btn btn-secondary" onClick={() => handleReEmbed(true)} disabled={rebedding || !ollamaOnline} style={{ flex: 1 }}>{rebedding ? <span className="spinner" /> : "▶ Start Embedding"}</button>
+                  <button className="btn btn-danger btn-outline" onClick={() => { if(confirm("This will clear existing embeddings and start from scratch. Proceed?")) handleReEmbed(false) }} disabled={rebedding || !ollamaOnline} style={{ flex: 1 }}>{rebedding ? <span className="spinner" /> : "🔄 Force All"}</button>
+                </>
+              )}
+              {embedState === 'running' && (
+                <>
+                  <button className="btn btn-secondary" onClick={handlePauseEmbed} disabled={!ollamaOnline} style={{ flex: 1 }}>⏸ Pause</button>
+                  <button className="btn btn-danger btn-outline" onClick={handleStopEmbed} disabled={!ollamaOnline} style={{ flex: 1 }}>⏹ Stop</button>
+                </>
+              )}
+              {embedState === 'paused' && (
+                <>
+                  <button className="btn btn-secondary" onClick={handleResumeEmbed} disabled={!ollamaOnline} style={{ flex: 1 }}>▶ Resume</button>
+                  <button className="btn btn-danger btn-outline" onClick={handleStopEmbed} disabled={!ollamaOnline} style={{ flex: 1 }}>⏹ Stop</button>
+                </>
+              )}
             </div>
             {embedProgress && (
               <div className="progress-container" style={{ width: "100%", marginTop: 8 }}>
@@ -185,14 +236,26 @@ export default function SettingsPanel({ showToast, ollamaOnline, onLanguageChang
                 <div className="progress-bar-bg"><div className="progress-bar-fill" style={{ width: `${embedProgress.percentage}%` }}></div></div>
               </div>
             )}
-            <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Embedding is required for OmniSearch (semantic). "Resume" skips snippets that already have embeddings. "Force All" recalculates everything.</div>
+            <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Embedding is required for OmniSearch (semantic). Click a model below to auto-populate the correct field.</div>
           </div>
           {models.length > 0 && (
-            <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-              <label>Available Models</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {models.map(m => <span key={m.name} className="keyword-badge" style={{ cursor: "pointer" }} onClick={() => setTextModel(m.name)}>{m.name}</span>)}
-              </div>
+            <div style={{ display: "flex", gap: 24, marginTop: 8 }}>
+              {embeddingModels.length > 0 && (
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>Embedding Models</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {embeddingModels.map(m => <span key={m.name} className="keyword-badge" style={{ cursor: "pointer" }} onClick={() => setEmbedModel(m.name)}>{m.name}</span>)}
+                  </div>
+                </div>
+              )}
+              {textModels.length > 0 && (
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>Text Generation Models</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {textModels.map(m => <span key={m.name} className="keyword-badge" style={{ cursor: "pointer" }} onClick={() => setTextModel(m.name)}>{m.name}</span>)}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

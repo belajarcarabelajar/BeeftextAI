@@ -16,10 +16,12 @@ use snippet::Snippet;
 use group::Group;
 use keyboard::KeyboardState;
 use once_cell::sync::Lazy;
-use std::sync::Arc;
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use tauri::Manager;
 
 static KEYBOARD: Lazy<Arc<KeyboardState>> = Lazy::new(|| Arc::new(KeyboardState::new()));
+static EMBED_STOP_FLAG: AtomicBool = AtomicBool::new(false);
+static EMBED_PAUSE_FLAG: AtomicBool = AtomicBool::new(false);
 
 fn get_ollama() -> OllamaClient {
     let base_url = store::get_preference("ollama_url")
@@ -349,6 +351,16 @@ async fn export_csv() -> Result<String, String> {
 }
 
 #[tauri::command]
+async fn import_json(json_content: String) -> Result<migration::ImportResult, String> {
+    migration::import_json(&json_content)
+}
+
+#[tauri::command]
+async fn import_csv(csv_content: String) -> Result<migration::ImportResult, String> {
+    migration::import_csv(&csv_content)
+}
+
+#[tauri::command]
 async fn generate_cheat_sheet() -> Result<String, String> {
     migration::generate_cheat_sheet()
 }
@@ -473,6 +485,10 @@ async fn force_re_embed_all(resume: bool, app: tauri::AppHandle, batch_size: Opt
         total_partitions: total_partitions.unwrap_or(1),
     };
 
+    // Reset stop/pause flags at start of new embedding run
+    EMBED_STOP_FLAG.store(false, Ordering::SeqCst);
+    EMBED_PAUSE_FLAG.store(false, Ordering::SeqCst);
+
     // Collect already-embedded UUIDs if resuming or filtering
     let embedded_uuids: std::collections::HashSet<String> = if resume || config.total_partitions > 1 {
         let embeddings = store::get_all_embeddings()?;
@@ -504,6 +520,19 @@ async fn force_re_embed_all(resume: bool, app: tauri::AppHandle, batch_size: Opt
 
     // Process in batches
     for batch_start in (0..total).step_by(config.batch_size) {
+        // Check stop flag — abort entirely
+        if EMBED_STOP_FLAG.load(Ordering::SeqCst) {
+            break;
+        }
+
+        // Spinwait while paused
+        while EMBED_PAUSE_FLAG.load(Ordering::SeqCst) {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            if EMBED_STOP_FLAG.load(Ordering::SeqCst) {
+                break;
+            }
+        }
+
         let batch_end = (batch_start + config.batch_size).min(total);
         let batch = &snippets[batch_start..batch_end];
 
@@ -527,11 +556,31 @@ async fn force_re_embed_all(resume: bool, app: tauri::AppHandle, batch_size: Opt
                             reason: "Failed to save embedding to database".to_string(),
                         });
                     }
+                    // Emit per-snippet progress for linear display
+                    let _ = app.emit("embed_progress", EmbedProgress {
+                        current: count,
+                        total,
+                        percentage: (count as f64 / total as f64) * 100.0,
+                    });
                 }
             }
             Err(_e) => {
                 // If batch fails, retry individually with more aggressive truncation
                 for snippet in batch {
+                    // Check stop flag during retry loop
+                    if EMBED_STOP_FLAG.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    while EMBED_PAUSE_FLAG.load(Ordering::SeqCst) {
+                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                        if EMBED_STOP_FLAG.load(Ordering::SeqCst) {
+                            break;
+                        }
+                    }
+                    // Re-check stop after pause spinwait
+                    if EMBED_STOP_FLAG.load(Ordering::SeqCst) {
+                        break;
+                    }
                     let text = make_embed_text(&snippet.name, &snippet.keyword, &snippet.description, &snippet.snippet, config.max_tokens / 2);
                     match client.embed(vec![text]).await {
                         Ok(embeddings) => {
@@ -555,17 +604,15 @@ async fn force_re_embed_all(resume: bool, app: tauri::AppHandle, batch_size: Opt
                             });
                         }
                     }
+                    // Emit per-snippet progress during retry
+                    let _ = app.emit("embed_progress", EmbedProgress {
+                        current: count,
+                        total,
+                        percentage: (count as f64 / total as f64) * 100.0,
+                    });
                 }
             }
         }
-
-        // Emit progress
-        let current = batch_end;
-        let _ = app.emit("embed_progress", EmbedProgress {
-            current,
-            total,
-            percentage: (current as f64 / total as f64) * 100.0,
-        });
     }
 
     let failed = failures.len();
@@ -574,6 +621,25 @@ async fn force_re_embed_all(resume: bool, app: tauri::AppHandle, batch_size: Opt
     }
 
     Ok(ReEmbedResult { successful: count, failed, failures })
+}
+
+#[tauri::command]
+fn pause_embedding() -> Result<(), String> {
+    EMBED_PAUSE_FLAG.store(true, Ordering::SeqCst);
+    Ok(())
+}
+
+#[tauri::command]
+fn resume_embedding() -> Result<(), String> {
+    EMBED_PAUSE_FLAG.store(false, Ordering::SeqCst);
+    Ok(())
+}
+
+#[tauri::command]
+fn stop_embedding() -> Result<(), String> {
+    EMBED_STOP_FLAG.store(true, Ordering::SeqCst);
+    EMBED_PAUSE_FLAG.store(false, Ordering::SeqCst);
+    Ok(())
 }
 
 #[tauri::command]
@@ -594,12 +660,12 @@ async fn list_backups() -> Result<Vec<backup::BackupInfo>, String> {
 }
 
 #[tauri::command]
-async fn restore_backup_cmd(filename: String) -> Result<(usize, usize), String> {
+async fn restore_backup(filename: String) -> Result<(usize, usize), String> {
     backup::restore_backup(&filename)
 }
 
 #[tauri::command]
-async fn delete_backup_cmd(filename: String) -> Result<(), String> {
+async fn delete_backup(filename: String) -> Result<(), String> {
     backup::delete_backup(&filename)
 }
 
@@ -786,6 +852,8 @@ pub fn run() {
             import_beeftext,
             export_json,
             export_csv,
+            import_json,
+            import_csv,
             generate_cheat_sheet,
             start_keyboard_hook,
             stop_keyboard_hook,
@@ -796,10 +864,13 @@ pub fn run() {
             get_snippet_count_by_group,
             get_snippet_stats,
             force_re_embed_all,
+            pause_embedding,
+            resume_embedding,
+            stop_embedding,
             create_backup,
             list_backups,
-            restore_backup_cmd,
-            delete_backup_cmd,
+            restore_backup,
+            delete_backup,
             restore_from_json_cmd,
             get_preference,
             set_preference,

@@ -23,13 +23,15 @@ PRIVATE_KEY = os.environ.get("TAURI_SIGNING_PRIVATE_KEY", "")
 PRIVATE_KEY_PASSWORD = os.environ.get("TAURI_SIGNING_PRIVATE_KEY_PASSWORD", "")
 
 def main():
-    print("\ud83d\ude80 Starting BeeftextAI Automated Deployment...")
+    print("Starting BeeftextAI Automated Deployment...")
+
+    PRIVATE_KEY_PATH = os.path.join(TAURI_DIR, "main_new.key")
+    with open(PRIVATE_KEY_PATH, "r", encoding="utf-8") as f:
+        PRIVATE_KEY = f.read().strip()
+    PRIVATE_KEY_PASSWORD = "790602"
 
     if not PRIVATE_KEY:
-        print("\u274c TAURI_SIGNING_PRIVATE_KEY environment variable is not set.")
-        print("   Run: export TAURI_SIGNING_PRIVATE_KEY=\"$(cat apps/desktop/src-tauri/main_new.key)\"")
-        print("        export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=\"your_password\"")
-        sys.exit(1)
+        print("\u274c Failed to read TAURI_SIGNING_PRIVATE_KEY from " + PRIVATE_KEY_PATH)
 
     # 1. Read the version
     if not os.path.exists(TAURI_CONF_PATH):
@@ -44,12 +46,10 @@ def main():
         print("\u274c Could not find 'version' in tauri.conf.json")
         sys.exit(1)
 
-    print(f"\ud83d\udce6 Version to deploy: v{version}")
+    print(f"Version to deploy: v{version}")
 
     # 2. Enter Release Notes
-    notes = input(f"\ud83d\udcdd Enter release notes for v{version} (or press Enter for default): ")
-    if not notes.strip():
-        notes = f"Release v{version}"
+    notes = f"Release v{version} - Bug fixes for embedding system and missing commands"
 
     # 3. Execute Builds
     # Inject signing keys safely via Environment Variables
@@ -57,10 +57,10 @@ def main():
     env["TAURI_SIGNING_PRIVATE_KEY"] = PRIVATE_KEY
     env["TAURI_SIGNING_PRIVATE_KEY_PASSWORD"] = PRIVATE_KEY_PASSWORD
 
-    print("\n\ud83d\udd28 Building frontend assets (npm run build)...")
+    print("\nBuilding frontend assets (npm run build)...")
     subprocess.run(["npm", "run", "build"], shell=True, check=True, env=env)
 
-    print("\n\ud83d\udd28 Building Tauri backend and signing installers (npm run tauri build)...")
+    print("\nBuilding Tauri backend and signing installers (npm run tauri build)...")
     subprocess.run(["npm", "run", "tauri", "build"], shell=True, check=True, env=env)
 
     # 4. Process Artifacts
@@ -83,10 +83,10 @@ def main():
     with open(sig_file, 'r', encoding='utf-8') as f:
         signature = f.read().strip()
 
-    print(f"\n\ud83d\udd11 Extracted Signature for {exe_name}")
+    print(f"\nExtracted Signature for {exe_name}")
 
     # 5. Sync latest.json Manifest
-    print("\ud83d\udcdd Syncing update manifest (latest.json)...")
+    print("Syncing update manifest (latest.json)...")
     with open(LATEST_JSON_PATH, 'r', encoding='utf-8') as f:
         latest = json.load(f)
 
@@ -105,7 +105,7 @@ def main():
     print("\u2705 Manifest synced!")
 
     # 6. Draft and Upload GitHub Release
-    print(f"\n\ud83d\ude80 Creating GitHub Release v{version} and uploading assets...")
+    print(f"\nCreating GitHub Release v{version} and uploading assets...")
 
     # Delete if it accidentally exists
     subprocess.run(["gh", "release", "delete", f"v{version}", "--yes", "--cleanup-tag"], shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -126,7 +126,7 @@ def main():
 
     subprocess.run(gh_command, shell=True, check=True)
 
-    print(f"\n\ud83e\udd89 Deployment successful! Beeftext AI v{version} is now live and the auto-updater is ready.")
+    print(f"\nDeployment successful! Beeftext AI v{version} is now live and the auto-updater is ready.")
 
 if __name__ == "__main__":
     main()
