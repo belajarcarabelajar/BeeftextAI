@@ -1,11 +1,11 @@
 {
-  "version": "0.5.5",
-  "notes": "Release v0.5.5 - Bug fixes for embedding system and backup commands",
-  "pub_date": "2026-04-04T06:00:00Z",
+  "version": "0.5.6",
+  "notes": "Release v0.5.6 - Signed build for deployment",
+  "pub_date": "2026-04-04T15:53:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL2dsZEFzeVJzM2YwcDR3dlovOWoyRzA1TGRLcXpET0ZFeEs0eEU0K2VDbEwrZlhLVGsxdDl2YnE3YjB3d0ppaHhRVXBKRUhxd1REUFIxaTVUSEZzTHdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MjgyODMwCWZpbGU6QmVlZlRleHQuQUlfMC41LjVfeDY0LXNldHVwLmV4ZQo5MktkZW1WWERHcjc5SkphaW1yNnZkMkwxYUhreXUvd2hLdkZvNnpVMkx6RytCWkw5L2sxWitCc3JIdnp2Rm5DdUErdTJnYjFWMjVCRnVoMnhRT01DUT09Cg==",
-      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.5/BeefText.AI_0.5.5_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVROURxdHJacWQxL3A0K1F2bmpaeCtxSEpPbllyL1V6K3F0djQwVFRCQU1kTE1lVUplNHUyd2crTVZsaDUzRFhyOUhnZVZ4WFlqQVZlQlQ3S2JqT1hqUmNWWFo5alJGNWdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc1MzE3ODU2CWZpbGU6QmVlZlRleHQuQUlfMC41LjZfeDY0LXNldHVwLmV4ZQptbDVNUFZ5Z1o4V2FjU1BOVnJkSEI0UnVxK0kwbWRySGpFL3ZZZzRKazdlYlpzRytIRGYrSTd1KzZUYno1c3dPZXNUWk5YWDN6eEVQTm83WE5FVGJCZz09Cg==",
+      "url": "https://github.com/belajarcarabelajar/BeeftextAI/releases/download/v0.5.6/BeefText.AI_0.5.6_x64-setup.exe"
     }
   }
 }
