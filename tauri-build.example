@@ -1,0 +1,6 @@
+# Signing key configuration for Tauri auto-updater
+# Copy this to .env and fill in the values
+# The signing_key.key file should already be present (gitignored)
+
+TAURI_SIGNING_PRIVATE_KEY_FILE=apps/desktop/src-tauri/signing_key.key
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD=BeeftextAI2026!
