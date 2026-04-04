@@ -168,11 +168,7 @@ export default function SettingsPanel({ showToast, ollamaOnline, onLanguageChang
       }
     } catch (e) {
       const errMsg = String(e);
-      if (errMsg.includes("JSON") || errMsg.includes("404")) {
-        showToast("✅ You are already on the latest version");
-      } else {
-        showToast(`Update Check Failed: ${errMsg}`, "error");
-      }
+      showToast(`Update Check Failed: ${errMsg}`, "error");
     }
   };
 
