@@ -219,7 +219,8 @@ async fn chat_with_ai(message: String, image_data: Option<String>) -> Result<Str
 
     store::save_chat_message("user", &message_truncated)?;
 
-    let history = store::get_chat_history(50)?;
+    // AI memory: pass last 10 messages (user+assistant pairs) to Ollama for conversation context
+    let history = store::get_chat_history(10)?;
     let snippets = store::get_all_snippets().unwrap_or_default();
     let groups = store::get_all_groups().unwrap_or_default();
 
@@ -301,7 +302,7 @@ async fn clear_chat() -> Result<(), String> {
 
 #[tauri::command]
 async fn get_chat_history_cmd() -> Result<Vec<(String, String)>, String> {
-    store::get_chat_history(100)
+    store::get_chat_history(10)
 }
 
 // ─── Semantic Search ──────────────────────────────────────────────────────────
